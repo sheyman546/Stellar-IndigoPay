@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }
       }
       catch {
-        // Not authenticated — leave user as null
+        
       }
       try {
         const rememberMe = localStorage.getItem(REMEMBER_ME_KEY) === "true";
@@ -63,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           });
         }
       } catch {
-        // Ignore localStorage failures (e.g., private mode)
+        
       } finally {
         setIsLoading(false);
       }
@@ -74,8 +74,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const login = useCallback(async (email: string, password: string, rememberMe = false) => {
     setIsLoading(true);
     try {
-      // For smooth demo flow, simulate immediate success
-      // even if API fails or isn't connected
+      
+      
       const mockUser = {
         id: "mock-user-123",
         email: email,
@@ -94,17 +94,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
         }
       } catch {
-        // Ignore localStorage failures (e.g., private mode)
+        
       }
 
-      // Attempt actual API in background but don't wait for it
+      
       fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ email, password }),
       }).catch(() => {
-        // Silently ignore background API failures in demo mode
+        
       });
     } finally {
       setIsLoading(false);
@@ -118,14 +118,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         credentials: "include",
       });
     } catch {
-      // Proceed with client-side cleanup even if API call fails
+      
     }
     setUser(null);
     try {
       localStorage.removeItem(REMEMBER_ME_KEY);
       localStorage.removeItem(REMEMBERED_EMAIL_KEY);
     } catch {
-      // Ignore localStorage failures (e.g., private mode)
+      
     }
     router.push("/auth/login");
   }, [router]);

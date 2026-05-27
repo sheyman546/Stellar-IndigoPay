@@ -1,8 +1,4 @@
-/**
- * Session fingerprinting — binds a session to the environment where it was created.
- * A fingerprint is a SHA-256 hash of the User-Agent and IP address.
- * If the User-Agent is absent (e.g. non-browser clients), the IP alone is hashed.
- */
+
 
 export async function computeFingerprint(
   userAgent: string | null,

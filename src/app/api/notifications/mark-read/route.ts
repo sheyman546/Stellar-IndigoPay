@@ -4,12 +4,7 @@ import { notifications } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { createProblemDetails } from "@/lib/api-utils";
 
-/**
- * POST /api/notifications/mark-read
- *
- * Marks one or more notifications as read for the authenticated user.
- * Body: { notificationIds: string[] }
- */
+
 export async function POST(request: NextRequest) {
   const userId = request.headers.get("x-user-id");
 
@@ -50,9 +45,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Ownership check: fetch the requested notifications and verify they all
-    // belong to the authenticated user. This prevents users from marking
-    // other users' notifications as read.
+    
+    
+    
     const owned = await db
       .select({ id: notifications.id })
       .from(notifications)
@@ -77,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Perform the update — only touch rows owned by this user
+    
     const updated = await db
       .update(notifications)
       .set({ read: true })

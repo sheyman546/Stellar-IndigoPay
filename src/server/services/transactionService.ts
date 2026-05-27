@@ -23,7 +23,7 @@ export async function processGiftTransaction(
 
   const transactionId = `txn_${crypto.randomUUID()}`;
 
-  // If sender is authenticated, deduct from their wallet
+  
   if (senderId) {
     const senderWallet = await db.query.wallets.findFirst({
       where: and(
@@ -36,7 +36,7 @@ export async function processGiftTransaction(
       throw new Error("Insufficient balance");
     }
 
-    // Update sender wallet (deduct)
+    
     await db
       .update(wallets)
       .set({
@@ -48,7 +48,7 @@ export async function processGiftTransaction(
       );
   }
 
-  // Upsert recipient wallet (add)
+  
   await db
     .insert(wallets)
     .values({
@@ -80,7 +80,7 @@ export async function processRefundTransaction(
   const { senderId, recipientId, amount, currency } = params;
   const transactionId = `txn_ref_${crypto.randomUUID()}`;
 
-  // Deduct from recipient
+  
   const recipientWallet = await db.query.wallets.findFirst({
     where: and(eq(wallets.userId, recipientId), eq(wallets.currency, currency)),
   });
@@ -99,7 +99,7 @@ export async function processRefundTransaction(
       and(eq(wallets.userId, recipientId), eq(wallets.currency, currency)),
     );
 
-  // If sender is authenticated, refund to their wallet
+  
   if (senderId) {
     await db
       .insert(wallets)

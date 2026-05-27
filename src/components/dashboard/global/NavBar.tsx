@@ -70,7 +70,7 @@ export const NavBar = ({ onMenuToggle }: NavBarProps) => {
           </div>
         </div>
 
-        {/* menu */}
+        {}
         <button
           onClick={onMenuToggle}
           className="flex items-center gap-1 p-2 text-[#71717A] cursor-pointer hover:bg-gray-50 rounded-xl transition-colors lg:hidden flex-col"

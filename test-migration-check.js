@@ -1,4 +1,4 @@
-// Quick test script for migration checker
+
 const { checkMigrationStatus } = require('./src/lib/db/migration-checker.ts');
 
 async function test() {

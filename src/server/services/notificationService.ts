@@ -21,9 +21,9 @@ interface CreateNotificationParams {
 export async function createNotification(params: CreateNotificationParams) {
   const { userId, type, title, message, metadata, priority } = params;
 
-  // Dispatch push notification if high priority
+  
   if (priority === "high") {
-    // We fire and forget push notifications to avoid delaying the database write
+    
     sendPushNotification(userId, title, message, metadata).catch((error) => {
       console.error("Failed to send push notification:", error);
     });
@@ -78,7 +78,7 @@ export async function notifyGiftConfirmed(
 ) {
   const notificationsList = [];
 
-  // Notify sender if authenticated
+  
   if (senderId) {
     notificationsList.push(
       createNotification({
@@ -91,7 +91,7 @@ export async function notifyGiftConfirmed(
     );
   }
 
-  // Notify recipient
+  
   const unlockText = unlocksAt
     ? `Unlocks on ${new Date(unlocksAt).toLocaleDateString()}`
     : "Available now";

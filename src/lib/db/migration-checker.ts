@@ -16,10 +16,7 @@ interface MigrationJournal {
   }>;
 }
 
-/**
- * Checks if database migrations are in sync with local migration files
- * @returns Promise<{ inSync: boolean; message: string }>
- */
+
 export async function checkMigrationStatus(): Promise<{
   inSync: boolean;
   message: string;
@@ -33,17 +30,17 @@ export async function checkMigrationStatus(): Promise<{
   let pool: Pool | null = null;
 
   try {
-    // Read local migration journal
+    
     const journalPath = join(process.cwd(), "drizzle", "meta", "_journal.json");
     const journalContent = readFileSync(journalPath, "utf-8");
     const journal: MigrationJournal = JSON.parse(journalContent);
     const localMigrationCount = journal.entries.length;
 
-    // Connect to database
+    
     pool = new Pool({ connectionString: databaseUrl });
     const db = drizzle(pool);
 
-    // Check if migrations table exists
+    
     const tableCheckResult = await pool.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -63,7 +60,7 @@ export async function checkMigrationStatus(): Promise<{
       };
     }
 
-    // Query applied migrations
+    
     const appliedMigrationsResult = await pool.query(`
       SELECT COUNT(*) as count FROM drizzle.__drizzle_migrations;
     `);
@@ -113,9 +110,7 @@ export async function checkMigrationStatus(): Promise<{
   }
 }
 
-/**
- * Runs database migrations
- */
+
 export async function runMigrations(): Promise<void> {
   const databaseUrl =
     process.env.DATABASE_URL ||

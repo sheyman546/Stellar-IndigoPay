@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
 
     const slug = await generateUniqueSlug();
 
-    // Generate short code for public share links
+    
     const shortCode = await generateUniqueShortCode();
 
     const [newGift] = await db

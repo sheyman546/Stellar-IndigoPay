@@ -1,7 +1,4 @@
-/**
- * Security Audit Logging Service
- * Logs security-related events for monitoring and compliance
- */
+
 
 export enum AuditEventType {
   OTP_GENERATED = "OTP_GENERATED",
@@ -23,24 +20,18 @@ interface AuditLogEntry {
   message: string;
 }
 
-/**
- * Logs a security audit event
- * In production, this should write to a dedicated audit log system
- * (e.g., CloudWatch, Datadog, Splunk, or a dedicated audit table)
- */
+
 export function logAuditEvent(entry: AuditLogEntry): void {
   const logEntry = {
     ...entry,
     timestamp: entry.timestamp.toISOString(),
   };
 
-  // Console logging for development
+  
   console.log("[SECURITY_AUDIT]", JSON.stringify(logEntry));
 }
 
-/**
- * Helper function to log OTP-related security events
- */
+
 export function logOTPEvent(
   eventType: AuditEventType,
   userId: string,
@@ -55,9 +46,7 @@ export function logOTPEvent(
   });
 }
 
-/**
- * Helper function to log gift OTP-related security events
- */
+
 export function logGiftOTPEvent(
   eventType: AuditEventType,
   giftId: string,

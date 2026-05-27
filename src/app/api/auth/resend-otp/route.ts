@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limiting: max 4 OTPs per 10 minutes per user
+    
     const rateLimitResult = await checkOTPRequestRateLimitByUserId(user.id);
     if (!rateLimitResult.allowed) {
       console.log(

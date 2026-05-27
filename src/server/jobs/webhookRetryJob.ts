@@ -20,7 +20,7 @@ async function processQueueItem(item: any) {
   try {
     await processWebhookEvent(item.event_type, item.payload);
 
-    // success → delete
+    
     await db.execute(sql`
       DELETE FROM webhook_retry_queue WHERE id = ${item.id}
     `);
@@ -30,11 +30,11 @@ async function processQueueItem(item: any) {
   }
 }
 
-// Placeholder for actual webhook processing logic
+
 async function processWebhookEvent(eventType: string, payload: unknown) {
   console.log(`Processing webhook event: ${eventType}`, payload);
   
-  // Simulate random failure for demonstration
+  
     if (Math.random() < 0.5) {
       throw new Error("Simulated webhook processing error");
     }
@@ -68,7 +68,7 @@ async function scheduleRetry(item: any, error: unknown) {
 async function processWebhookQueue() {
   const result = await fetchQueueBatch();
 
-  // drizzle returns rows differently depending on driver
+  
   const items = result.rows ?? result;
 
   for (const item of items) {

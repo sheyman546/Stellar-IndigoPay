@@ -29,10 +29,10 @@ export async function cleanupExpiredTokens() {
     console.error("[CLEANUP_JOB_ERROR]", error);
     await enqueueWebhookRetry({
       eventType: "EXPIRED_PASSWORD_RESET",
-      payload: {}, // payload to retry the cleanup task
-      delayMs: 5 * 60 * 1000, // retry after 5 minutes
+      payload: {}, 
+      delayMs: 5 * 60 * 1000, 
     })
-    // throw error;
+    
     }
   }
 }

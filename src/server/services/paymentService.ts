@@ -15,16 +15,13 @@ export interface CheckoutSessionResult {
   url: string;
 }
 
-/**
- * Generate a Stripe Checkout Session for a gift payment.
- * Attaches giftId as metadata and sets redirect URLs back to the app.
- */
+
 export async function initiateStripeCheckout(
   params: InitiateStripeCheckoutParams
 ): Promise<CheckoutSessionResult> {
   const { giftId, amount, currency, baseUrl } = params;
 
-  // Only USD and other Stripe-supported currencies are allowed via this flow
+  
   const supportedCurrencies = ["usd", "eur", "gbp", "cad", "aud", "jpy", "sgd", "nzd"];
   const normalizedCurrency = currency.toLowerCase();
 
@@ -49,7 +46,7 @@ export async function initiateStripeCheckout(
     throw new Error("Stripe did not return a checkout URL");
   }
 
-  // Store the session ID as the payment reference on the gift
+  
   await db
     .update(gifts)
     .set({

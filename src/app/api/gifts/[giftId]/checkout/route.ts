@@ -40,7 +40,7 @@ export async function POST(
       return createProblemDetails("about:blank", "Forbidden", 403, "Forbidden");
     }
 
-    // Only allow checkout initiation for gifts awaiting payment
+    
     const allowedStatuses = ["otp_verified", "pending_review"];
     if (!allowedStatuses.includes(gift.status)) {
       return createProblemDetails(
@@ -53,7 +53,7 @@ export async function POST(
 
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
-      `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+      `${request.nextUrl.protocol}
 
     const { sessionId, url } = await initiateStripeCheckout({
       giftId,

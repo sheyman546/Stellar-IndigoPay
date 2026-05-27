@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Validate request body using Zod schema
+    
     const validationResult = CreateGiftSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       unlock_at,
     } = validationResult.data;
 
-    // Check if recipient exists
+    
     const recipientUser = await db.query.users.findFirst({
       where: eq(users.id, recipient),
     });
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prevent sending gift to self
+    
     if (recipient === userId) {
       return createProblemDetails(
         "about:blank",
@@ -84,14 +84,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize optional fields
+    
     const sanitizedMessage = message ? sanitizeInput(message) : null;
     const sanitizedTemplate = template ? sanitizeInput(template) : null;
     const sanitizedCoverImageId = coverImageId
       ? sanitizeInput(String(coverImageId))
       : null;
 
-    // Validate message length
+    
     if (!validateMessage(sanitizedMessage)) {
       return createProblemDetails(
         "about:blank",
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate unlock_at if provided
+    
     if (unlock_at) {
       const unlockValidation = validateUnlockAt(unlock_at);
       if (!unlockValidation.valid) {
@@ -114,13 +114,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate short link slug
+    
     const slug = await generateUniqueSlug();
 
-    // Generate short code for public share links
+    
     const shortCode = await generateUniqueShortCode();
 
-    // Create gift record
+    
     const [newGift] = await db
       .insert(gifts)
       .values({
@@ -139,11 +139,11 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    // Generate and store OTP
+    
     const otp = generateOTP();
     await storeGiftOTP(newGift.id, otp);
 
-    // Send OTP to sender
+    
     const emailResult = await sendGiftConfirmationOTP(
       userEmail,
       otp,

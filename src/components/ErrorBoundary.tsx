@@ -14,18 +14,14 @@ interface State {
   error?: Error;
 }
 
-/**
- * Global Error Boundary
- * Catch JavaScript errors anywhere in their child component tree, 
- * log those errors, and display a fallback UI instead of the component tree that crashed.
- */
+
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI.
+    
     return { hasError: true, error };
   }
 

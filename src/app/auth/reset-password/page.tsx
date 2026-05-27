@@ -48,7 +48,7 @@ const ResetPasswordPage: React.FC = () => {
 
     setIsLoading(true);
 
-    // Simulate API call
+    
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       console.log('Password updated successfully');
@@ -127,7 +127,7 @@ const ResetPasswordPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Success Toast */}
+      {}
       {showSuccess && (
         <div className="fixed bottom-8 left-8 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center gap-3 bg-[#ECFDF3] border border-[#D1FADF] rounded-lg px-4 py-3 shadow-sm">

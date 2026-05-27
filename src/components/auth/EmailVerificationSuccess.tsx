@@ -16,7 +16,7 @@ export const EmailVerificationSuccess: React.FC<
   return (
     <div className="w-full flex-1 flex flex-col h-full lg:h-auto">
       <div className="flex-1 lg:flex-none flex flex-col items-center justify-center text-center">
-        {/* Success Icon */}
+        {}
         <div className="flex justify-center mb-8">
           <div className="w-[120px] h-[120px] bg-linear-to-br from-[#A59AFF] to-[#7C6FFF] rounded-full flex items-center justify-center relative">
             <div className="w-[104px] h-[104px] bg-[#6C5CE7] rounded-full flex items-center justify-center shadow-lg">
@@ -25,7 +25,7 @@ export const EmailVerificationSuccess: React.FC<
           </div>
         </div>
 
-        {/* Success Message */}
+        {}
         <div className="mb-8 md:mb-9">
           <h1 className="text-[22px] md:text-[24px] font-bold text-[#18181B] mb-3 md:mb-4 leading-tight">
             Email verified successfully!
@@ -38,7 +38,7 @@ export const EmailVerificationSuccess: React.FC<
         </div>
       </div>
 
-      {/* Continue Button */}
+      {}
       <div className="flex flex-col items-center gap-6 mt-auto lg:mt-0 w-full">
         <Button
           variant="primary"

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     let refreshToken = (body as { refreshToken?: string }).refreshToken;
 
-    // Fallback: read from cookie if not in request body
+    
     if (!refreshToken) {
       refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
     }
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
 
-    // Clear auth cookies
+    
     response.cookies.set(ACCESS_TOKEN_COOKIE, "", {
       ...COOKIE_OPTIONS,
       maxAge: 0,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// E.164: +<country-code><subscriber-number>, 2–15 digits after +, no leading 0
+
 const E164_REGEX = /^\+[1-9]\d{1,14}$/;
 
 export const phoneField = z

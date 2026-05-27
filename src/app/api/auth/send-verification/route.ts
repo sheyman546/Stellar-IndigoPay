@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Rate limiting: max 4 OTPs per 10 minutes per user
+    
     const rateLimitResult = await checkOTPRequestRateLimitByUserId(userId);
     if (!rateLimitResult.allowed) {
       console.log(`[AUTH_AUDIT] OTP rate limited for user: ${userId}`);

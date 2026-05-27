@@ -1,8 +1,6 @@
 import Stripe from "stripe";
 
-/**
- * Stripe client configuration for gift creation payments.
- */
+
 export const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY || "sk_test_placeholder_for_build_step",
   {
@@ -29,9 +27,7 @@ export interface CheckoutSessionParams {
   cancelUrl: string;
 }
 
-/**
- * Create a Stripe Checkout Session for one-time gift payment.
- */
+
 export const createCheckoutSession = async (
   params: CheckoutSessionParams
 ): Promise<Stripe.Checkout.Session> => {
@@ -59,11 +55,7 @@ export const createCheckoutSession = async (
   });
 };
 
-/**
- * Verify a Stripe payment intent
- * @param paymentIntentId - The Stripe payment intent ID
- * @returns Verification result with status and transaction details
- */
+
 export const verifyPayment = async (paymentIntentId: string) => {
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error("Stripe secret key is not configured");
@@ -80,7 +72,7 @@ export const verifyPayment = async (paymentIntentId: string) => {
       success: true,
       status: paymentIntent.status,
       reference: paymentIntent.id,
-      amount: paymentIntent.amount / 100, // Convert from cents to dollars
+      amount: paymentIntent.amount / 100, 
       currency: paymentIntent.currency.toUpperCase(),
       paidAt: paymentIntent.status === "succeeded"
         ? new Date(paymentIntent.created * 1000).toISOString()
@@ -95,11 +87,7 @@ export const verifyPayment = async (paymentIntentId: string) => {
   }
 };
 
-/**
- * Check if a payment was successful based on Stripe status
- * @param status - The payment status from Stripe
- * @returns boolean indicating if payment was successful
- */
+
 export const isPaymentSuccessful = (status: string): boolean => {
   return status === "succeeded";
 };

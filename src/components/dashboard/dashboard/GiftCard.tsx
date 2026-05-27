@@ -8,7 +8,7 @@ import PackageIcon from "@/assets/images/package.png";
 import { KycCard } from "./KycCard";
 import { GiftInfoCard } from "./GiftInfoCard";
 
-// 1. Defined Interface to fix TypeScript "red dots"
+
 interface TimeLeft {
   days: number;
   hours: number;
@@ -107,7 +107,7 @@ const GiftReleaseCard = ({ unlockDate }: { unlockDate: string }) => {
 
   const format = (num: number) => String(num).padStart(2, '0');
 
-  // 2. Handling the "Just Unlocked" Edge Case
+  
   if (time.total <= 0) {
     return (
       <div className="px-4 py-5 border border-[#F7F7FC] bg-white flex-1 rounded-xl shadow-sm flex flex-col justify-between">
@@ -165,7 +165,7 @@ const GiftReleaseCard = ({ unlockDate }: { unlockDate: string }) => {
   );
 };
 
-// 3. Added proper types for StatCard to fix linting errors
+
 interface StatProps {
   amount: string;
   title: string;

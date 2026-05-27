@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
         setIsLoading(true);
         setStatus(null);
 
-        // Mocking the API call
+        
         setTimeout(() => {
             setIsLoading(false);
             if (email.includes("@")) {

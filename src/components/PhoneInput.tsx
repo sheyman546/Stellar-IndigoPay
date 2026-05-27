@@ -32,7 +32,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
       <div className="w-full">
        
         <div className="relative flex gap-2">
-          {/* Country Code Selector */}
+          {}
           <div className="relative">
              {label && (
           <label 
@@ -76,7 +76,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
             )}
           </div>
 
-          {/* Phone Number Input */}
+          {}
           <input
             ref={ref}
             type="tel"

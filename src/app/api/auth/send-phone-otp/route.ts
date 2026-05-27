@@ -4,12 +4,12 @@ import { isRateLimited } from "@/lib/rate-limiter";
 import { validateE164PhoneNumber } from "@/lib/validation";
 import { createProblemDetails } from "@/lib/api-utils";
 
-const OTP_RATE_LIMIT = 3; // 3 requests per hour per phone number
-const OTP_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const OTP_RATE_LIMIT = 3; 
+const OTP_RATE_WINDOW_MS = 60 * 60 * 1000; 
 
 export async function POST(request: NextRequest) {
   try {
-    // CSRF Protection: Basic Origin Check
+    
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
     if (origin && host && !origin.includes(host)) {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate phone number format
+    
     if (!validateE164PhoneNumber(phoneNumber)) {
       return createProblemDetails(
         "about:blank",
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limiting: 3 OTP requests per hour per phone number
+    
     if (
       isRateLimited(`otp:${phoneNumber}`, OTP_RATE_LIMIT, OTP_RATE_WINDOW_MS)
     ) {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send OTP via SMS
+    
     const result = await sendOTP(phoneNumber);
 
     if (!result.success) {

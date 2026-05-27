@@ -1,7 +1,4 @@
-/**
- * Manual Test Script for OTP Security Implementation
- * Run with: npx ts-node scripts/test-otp-security.ts
- */
+
 
 import { verifyOTP } from "../src/server/services/otpService";
 import { AuditEventType } from "../src/server/services/auditService";
@@ -10,7 +7,7 @@ console.log("=".repeat(60));
 console.log("OTP Security Implementation - Manual Test");
 console.log("=".repeat(60));
 
-// Test scenarios
+
 const testScenarios = [
   {
     name: "Narrow Window Lock (5 attempts)",
@@ -45,7 +42,7 @@ console.log("=".repeat(60));
 console.log("✅ Implementation Verification");
 console.log("=".repeat(60));
 
-// Verify key components exist
+
 console.log("\n1. Database Schema Fields:");
 console.log("   ✅ otpFailedAttempts - Tracks cumulative failures");
 console.log("   ✅ otpAttemptsWindowStart - Tracks 1-hour window");

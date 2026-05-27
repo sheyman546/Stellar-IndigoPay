@@ -28,7 +28,7 @@ export default function VerifyPage() {
 
   const { login } = useAuthContext();
 
-  // Mock email - in real app, this would come from URL params or context
+  
   const userEmail = "jo***3@gmail.com";
 
   useEffect(() => {
@@ -47,12 +47,12 @@ export default function VerifyPage() {
     return () => clearInterval(timer);
   }, [timeLeft > 0]);
 
-  // Prevent back navigation when verified
+  
   useEffect(() => {
     if (isVerified) {
       const handlePopState = (event: PopStateEvent) => {
         event.preventDefault();
-        // Push the current state back to prevent going back
+        
         window.history.pushState(null, "", window.location.href);
       };
 
@@ -95,7 +95,7 @@ export default function VerifyPage() {
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Simple validation simulation (accept any 6 digits for now except 000000)
+    
     if (code === "000000") {
       setNotification({
         type: "error",
@@ -108,13 +108,13 @@ export default function VerifyPage() {
     console.log("Verifying code:", code);
     setIsSubmitting(false);
 
-    // Show success notification
+    
     setNotification({
       type: "success",
       message: "OTP Verification successful",
     });
 
-    // Set verified state after showing notification
+    
     setTimeout(() => {
       setIsVerified(true);
     }, 1500);
@@ -123,10 +123,10 @@ export default function VerifyPage() {
   const handleContinueToDashboard = async () => {
     setIsNavigating(true);
 
-    // Establishing session via mocked AuthContext
+    
     await login("john123@gmail.com", "password123");
 
-    // Smooth transition to dashboard
+    
     router.push("/dashboard/sender");
   };
 
@@ -137,7 +137,7 @@ export default function VerifyPage() {
 
   const handleOtpComplete = (value: string) => {
     setOtp(value);
-    // Auto-submit when all 6 digits are entered
+    
     handleVerify(value);
   };
 

@@ -1,12 +1,6 @@
-/**
- * Mystery UX Utilities
- * Handles Haptic Feedback and Audio Effects
- */
 
-/**
- * Triggers haptic feedback if supported by the device
- * @param intensity - 'light' | 'medium' | 'heavy'
- */
+
+
 export const triggerHaptic = (intensity: "light" | "medium" | "heavy" = "medium") => {
   if (typeof window !== "undefined" && window.navigator.vibrate) {
     const patterns = {
@@ -18,10 +12,7 @@ export const triggerHaptic = (intensity: "light" | "medium" | "heavy" = "medium"
   }
 };
 
-/**
- * Plays mystery-themed sound effects using Web Audio API
- * Avoids dependency on external assets
- */
+
 export const playMysterySound = (type: "unwrap" | "shine" | "reveal" | "scratch") => {
   if (typeof window === "undefined") return;
 
@@ -57,7 +48,7 @@ export const playMysterySound = (type: "unwrap" | "shine" | "reveal" | "scratch"
         break;
 
       case "reveal":
-        // Celebratory chime
+        
         const chime = (freq: number, delay: number) => {
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
@@ -70,16 +61,16 @@ export const playMysterySound = (type: "unwrap" | "shine" | "reveal" | "scratch"
           osc.start(now + delay);
           osc.stop(now + delay + 0.8);
         };
-        chime(523.25, 0); // C5
-        chime(659.25, 0.1); // E5
-        chime(783.99, 0.2); // G5
-        chime(1046.5, 0.3); // C6
+        chime(523.25, 0); 
+        chime(659.25, 0.1); 
+        chime(783.99, 0.2); 
+        chime(1046.5, 0.3); 
         break;
 
       case "scratch":
         oscillator.type = "square";
         oscillator.frequency.setValueAtTime(100, now);
-        // Add random chatter
+        
         const filter = audioCtx.createBiquadFilter();
         filter.type = "highpass";
         filter.frequency.value = 1000;

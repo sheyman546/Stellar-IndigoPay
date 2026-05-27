@@ -3,13 +3,7 @@ import { stripe } from "@/lib/stripe/client";
 import Stripe from "stripe";
 import { createProblemDetails } from "@/lib/api-utils";
 
-/**
- * Stripe Webhook Handler
- *
- * This endpoint receives events from Stripe.
- * It cryptographically verifies the stripe-signature header
- * using Stripe's constructEvent method to ensure authenticity.
- */
+
 export async function POST(req: NextRequest) {
   try {
     const signature = req.headers.get("stripe-signature");
@@ -35,13 +29,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Read the raw request body as text for Stripe verification
+    
     const rawBody = await req.text();
 
     let event: Stripe.Event;
 
     try {
-      // Use Stripe's official constructEvent method to verify the signature
+      
       event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err) {
       console.warn("[STRIPE_WEBHOOK] Signature verification failed:", err);
@@ -82,8 +76,8 @@ export async function POST(req: NextRequest) {
           "stripe",
         );
         if (!result.success && !paymentIntentId) {
-          // Fallback to checking by ID if reference is not found/stored yet
-          // In zendvo, payment_reference is usually the provider's reference (PI or Session ID)
+          
+          
         }
       } else {
         console.warn("[STRIPE_WEBHOOK] No giftId found in metadata");

@@ -151,7 +151,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
 
   const sidebarContent = (applyAriaCurrent: boolean) => (
     <>
-      {/* Logo */}
+      {}
       <div className="mb-10 flex items-center justify-between sticky top-0 left-0 bg-white z-10 max-h-screen">
         <Image src="/logo.png" alt="Zendvo logo" width={130} height={40} />
         <button
@@ -162,7 +162,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
         </button>
       </div>
 
-      {/* Main Menu */}
+      {}
       <div className="mb-10">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
           Main Menu
@@ -174,7 +174,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
         </nav>
       </div>
 
-      {/* General */}
+      {}
       <div className="flex-1">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
           General
@@ -186,7 +186,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
               renderNavLink(item, { compact: true, applyAriaCurrent }),
             )}
 
-          {/* Dark Mode Toggle */}
+          {}
           <div className="flex items-center justify-between px-4 py-3 text-gray-600">
             <div className="flex items-center gap-3">
               <MoonIcon />
@@ -214,7 +214,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
         </nav>
       </div>
 
-      {/* Logout */}
+      {}
       <button
         onClick={handleLogout}
         className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-gray-700 transition-colors w-full text-left"
@@ -227,17 +227,17 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
 
   return (
     <>
-      {/* Desktop Sidebar */}
+      {}
       <aside
         aria-hidden={!isDesktopViewport}
         className="h-screen hidden w-61 px-3 py-8 md:px-5 fixed top-0 left-0 lg:flex flex-col bg-white border-r border-gray-100 overflow-y-auto"
       >
         {sidebarContent(isDesktopViewport)}
       </aside>
-      {/* Spacer for fixed sidebar */}
+      {}
       <div className="hidden lg:block w-61 shrink-0" />
 
-      {/* Mobile Sidebar Overlay */}
+      {}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -245,7 +245,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
         />
       )}
 
-      {/* Mobile Sidebar Drawer */}
+      {}
       <aside
         aria-hidden={isDesktopViewport || !isOpen}
         className={`fixed top-0 left-0 h-screen w-72 px-5 py-8 flex flex-col bg-white z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${

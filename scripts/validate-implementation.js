@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-/**
- * Implementation Validation Script
- * Checks if all required components are in place
- */
+
 
 const fs = require('fs');
 const path = require('path');
@@ -16,7 +13,7 @@ console.log('='.repeat(70) + '\n');
 let allPassed = true;
 const results = [];
 
-// Helper function to check file exists
+
 function checkFile(filePath, description) {
   const fullPath = path.join(__dirname, '..', filePath);
   const exists = fs.existsSync(fullPath);
@@ -29,7 +26,7 @@ function checkFile(filePath, description) {
   return exists;
 }
 
-// Helper function to check file contains text
+
 function checkFileContains(filePath, searchText, description) {
   const fullPath = path.join(__dirname, '..', filePath);
   if (!fs.existsSync(fullPath)) {
@@ -55,7 +52,7 @@ function checkFileContains(filePath, searchText, description) {
 
 console.log('📁 Checking Files...\n');
 
-// Check core files exist
+
 checkFile('src/lib/db/schema.ts', 'Database schema file exists');
 checkFile('src/server/services/otpService.ts', 'OTP service file exists');
 checkFile('src/server/services/auditService.ts', 'Audit service file exists');
@@ -63,7 +60,7 @@ checkFile('migrations/add_otp_wide_window_tracking.sql', 'Migration file exists'
 
 console.log('\n📝 Checking Schema Changes...\n');
 
-// Check schema has new fields
+
 checkFileContains(
   'src/lib/db/schema.ts',
   'otpFailedAttempts',
@@ -77,7 +74,7 @@ checkFileContains(
 
 console.log('\n🔐 Checking OTP Service Logic...\n');
 
-// Check OTP service has required logic
+
 checkFileContains(
   'src/server/services/otpService.ts',
   'cumulativeFailures >= 10',
@@ -106,7 +103,7 @@ checkFileContains(
 
 console.log('\n📊 Checking Audit Service...\n');
 
-// Check audit service has required event types
+
 checkFileContains(
   'src/server/services/auditService.ts',
   'ACCOUNT_LOCKED_5_ATTEMPTS',
@@ -130,7 +127,7 @@ checkFileContains(
 
 console.log('\n🗄️ Checking Migration...\n');
 
-// Check migration has required SQL
+
 checkFileContains(
   'migrations/add_otp_wide_window_tracking.sql',
   'otp_failed_attempts',
@@ -144,7 +141,7 @@ checkFileContains(
 
 console.log('\n📚 Checking Documentation...\n');
 
-// Check documentation exists
+
 checkFile('docs/OTP_SECURITY_IMPLEMENTATION.md', 'Technical documentation exists');
 checkFile('docs/OTP_SECURITY_QUICK_REFERENCE.md', 'Quick reference exists');
 checkFile('docs/TESTING_GUIDE.md', 'Testing guide exists');
@@ -153,14 +150,14 @@ checkFile('DEPLOYMENT_CHECKLIST.md', 'Deployment checklist exists');
 
 console.log('\n🧪 Checking Tests...\n');
 
-// Check test file exists
+
 checkFile('__tests__/otpService.security.test.ts', 'Test file exists');
 
 console.log('\n' + '='.repeat(70));
 console.log('📋 Validation Results');
 console.log('='.repeat(70) + '\n');
 
-// Print all results
+
 results.forEach(result => {
   console.log(`${result.status} ${result.check}`);
 });

@@ -38,17 +38,17 @@ export const ScratchReveal: React.FC<ScratchRevealProps> = ({
     canvas.width = width;
     canvas.height = height;
 
-    // Fill with cover color
+    
     ctx.fillStyle = coverColor;
     ctx.fillRect(0, 0, width, height);
 
-    // Add some noise or texture to the cover
+    
     ctx.fillStyle = "rgba(0,0,0,0.05)";
     for (let i = 0; i < 1000; i++) {
         ctx.fillRect(Math.random() * width, Math.random() * height, 1, 1);
     }
 
-    // Add text instructions
+    
     ctx.fillStyle = "#64748B";
     ctx.font = "14px sans-serif";
     ctx.textAlign = "center";

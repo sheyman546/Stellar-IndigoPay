@@ -9,7 +9,7 @@ import { ArrowRight, Gift, Shield, Zap } from "lucide-react";
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
-      {/* Navigation */}
+      {}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {}
       <section className="pt-40 pb-20 px-6">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
@@ -124,7 +124,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it Works Section */}
+      {}
       <section id="how-it-works" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
@@ -133,7 +133,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-12 relative">
-            {/* Step 1 */}
+            {}
             <motion.div 
                whileHover={{ y: -10 }}
                className="flex flex-col items-center text-center p-8 rounded-[40px] bg-[#F8FAFF] border border-slate-50 shadow-sm"
@@ -143,7 +143,7 @@ export default function LandingPage() {
               <p className="text-[#717182]">Choose an amount, add a personal message, and pick a beautiful digital wrapper.</p>
             </motion.div>
 
-            {/* Step 2 */}
+            {}
             <motion.div 
                whileHover={{ y: -10 }}
                className="flex flex-col items-center text-center p-8 rounded-[40px] bg-[#F8FAFF] border border-slate-50 shadow-sm"
@@ -153,7 +153,7 @@ export default function LandingPage() {
               <p className="text-[#717182]">Decide exactly when the recipient can see and claim their gift. The mystery builds until then.</p>
             </motion.div>
 
-            {/* Step 3 */}
+            {}
             <motion.div 
                whileHover={{ y: -10 }}
                className="flex flex-col items-center text-center p-8 rounded-[40px] bg-[#F8FAFF] border border-slate-50 shadow-sm"
@@ -166,7 +166,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {}
       <section id="testimonials" className="py-24 bg-[#F8FAFF]">
         <div className="max-w-7xl mx-auto px-6">
           <h2 className="text-4xl font-bold text-center mb-16 font-br-firma">Loved by Givers Everywhere</h2>
@@ -192,7 +192,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ Accordion */}
+      {}
       <section id="faq" className="py-24 bg-white">
         <div className="max-w-3xl mx-auto px-6">
           <h2 className="text-4xl font-bold text-center mb-16 font-br-firma">Frequently Asked Questions</h2>
@@ -218,7 +218,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Simple Footer */}
+      {}
       <footer className="py-12 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:row justify-between items-center gap-6">
           <div className="flex items-center gap-2 opacity-50">

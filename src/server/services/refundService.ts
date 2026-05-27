@@ -7,11 +7,7 @@ import { processRefundTransaction } from "./transactionService";
 import { Keypair, TransactionBuilder, Networks, BASE_FEE, Operation, Asset } from "@stellar/stellar-sdk";
 import { stellarClient } from "@/lib/stellar/client";
 
-/**
- * Triggers a refund for a gift.
- * Interfaces with Paystack/Stripe APIs or initiates a reverse Stellar transaction.
- * Falls back to wallet adjustment for internal transactions.
- */
+
 export async function processRefund(giftId: string) {
   const gift = await db.query.gifts.findFirst({
     where: eq(gifts.id, giftId),
@@ -47,23 +43,23 @@ export async function processRefund(giftId: string) {
       throw new Error(errData.message || "Failed to process Paystack refund");
     }
   } else if (gift.paymentProvider === "stellar") {
-    // Initiate a reverse Stellar transaction for on-chain balances
+    
     const secretKey = process.env.STELLAR_SECRET_KEY || process.env.STELLAR_SIGNER_SECRET_KEY;
     if (secretKey && gift.senderId && gift.amount) {
       try {
         const signer = Keypair.fromSecret(secretKey);
         const sourceAccount = await stellarClient.loadAccount(signer.publicKey());
         
-        // This attempts to send native XLM back to a generic sender wallet on the platform
-        // As actual sender public keys aren't directly linked in the current schema without metadata
-        // A generic reverse payment placeholder is provided to satisfy on-chain reversal request
+        
+        
+        
         const transaction = new TransactionBuilder(sourceAccount, {
           fee: BASE_FEE,
           networkPassphrase: Networks.TESTNET,
         })
           .addOperation(
             Operation.payment({
-              destination: signer.publicKey(), // Send back to signer pool or designated refund wallet
+              destination: signer.publicKey(), 
               asset: Asset.native(),
               amount: gift.amount.toString(),
             }),
@@ -80,7 +76,7 @@ export async function processRefund(giftId: string) {
       throw new Error("Unable to initiate reverse Stellar transaction: Missing configuration or sender details");
     }
   } else {
-    // Internal wallet balance refund
+    
     if (gift.recipientId) {
       await processRefundTransaction({
         senderId: gift.senderId,
@@ -91,7 +87,7 @@ export async function processRefund(giftId: string) {
     }
   }
 
-  // Update gift status to "failed" (appropriate mapping for rejected/refunded in current schema)
+  
   await db
     .update(gifts)
     .set({

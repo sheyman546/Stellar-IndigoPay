@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
 interface OTPCountdownProps {
-  /** Total duration in seconds */
+  
   duration: number;
 
-  /** Callback when countdown reaches zero */
+  
   onExpire?: () => void;
 
-  /** How often screen readers should be updated (in seconds) */
-  announceInterval?: number; // default: 30s
+  
+  announceInterval?: number; 
 }
 
 export function OTPCountdown({
@@ -33,12 +33,12 @@ export function OTPCountdown({
     return () => clearInterval(interval);
   }, [timeLeft, onExpire]);
 
-  // 🔊 control when screen reader should announce
+  
   useEffect(() => {
     const shouldAnnounce =
-      timeLeft === duration || // initial
-      timeLeft === 0 || // expired
-      timeLeft % announceInterval === 0; // periodic updates
+      timeLeft === duration || 
+      timeLeft === 0 || 
+      timeLeft % announceInterval === 0; 
 
     if (shouldAnnounce) {
       setLastAnnounced(timeLeft);

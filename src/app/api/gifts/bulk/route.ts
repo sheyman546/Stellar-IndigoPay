@@ -18,10 +18,7 @@ const BulkGiftRequestSchema = z.object({
   gifts: z.array(CreateGiftSchema).min(1, "Minimum 1 gift required").max(50, "Maximum 50 gifts allowed in one bulk request"),
 });
 
-/**
- * Bulk Gift Creation API
- * POST /api/gifts/bulk
- */
+
 export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get("x-user-id");
@@ -51,10 +48,10 @@ export async function POST(request: NextRequest) {
 
     const { gifts: requestedGifts } = validationResult.data;
 
-    // Get all recipient IDs to verify existence in bulk
+    
     const recipientIds = [...new Set(requestedGifts.map((g) => g.recipient))];
     
-    // Check if any recipient is the sender
+    
     if (recipientIds.includes(userId)) {
         return createProblemDetails(
           "about:blank",
@@ -82,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     const recipientMap = new Map(foundRecipients.map((r) => [r.id, r]));
 
-    // Prepare gift records within a transaction
+    
     const createdGifts = await db.transaction(async (tx) => {
       const giftRecords = [];
 
@@ -105,7 +102,7 @@ export async function POST(request: NextRequest) {
           template: sanitizedTemplate,
           coverImageId: sanitizedCoverImageId,
           unlockDatetime: utcUnlockDatetime,
-          status: "pending_otp" as "pending_otp", // Keeping consistency with individual flow
+          status: "pending_otp" as "pending_otp", 
           slug,
           shortCode,
           totalAmount: giftInput.amount,
@@ -115,8 +112,8 @@ export async function POST(request: NextRequest) {
       return await tx.insert(gifts).values(giftRecords).returning();
     });
 
-    // In bulk flow, we skip individual OTP emails to avoid spamming the sender.
-    // However, we still return the gift IDs so the frontend can proceed to payment.
+    
+    
     
     console.log(`[BULK_GIFT] Created ${createdGifts.length} gifts for sender ${userId}`);
 

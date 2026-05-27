@@ -33,7 +33,7 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
 }) => {
   const total = amount + processingFee;
 
-  // --- new state for check balance ---
+  
   const [balance, setBalance] = useState<number | null>(null);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
@@ -41,9 +41,9 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
     setIsCheckingBalance(true);
     setBalance(null);
     try {
-      // TODO: replace with your real balance API call
+      
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      setBalance(250.00); // placeholder until real API is connected
+      setBalance(250.00); 
     } catch (error) {
       console.error("Failed to fetch balance", error);
     } finally {
@@ -63,7 +63,7 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
         </p>
 
         <div className="mt-6 rounded-2xl border border-[#EEEEF3] bg-white p-4 space-y-3 shadow-sm">
-          {/* Recipient */}
+          {}
           <div className="flex justify-between items-start">
             <p className={rowLabel}>Recipient</p>
             <div className={rowValue}>
@@ -72,19 +72,19 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
             </div>
           </div>
 
-          {/* Amount */}
+          {}
           <div className="flex justify-between items-center pt-2">
             <p className={rowLabel}>Amount</p>
             <p className={rowValue}>${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
 
-          {/* Processing Fee */}
+          {}
           <div className="flex justify-between items-center pt-2">
             <p className={rowLabel}>Processing Fee</p>
             <p className={rowValue}>${processingFee.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
 
-          {/* Total Amount */}
+          {}
           <div className="flex justify-between items-end border-t border-[#EEEEF3] pt-4 mt-2">
             <p className={rowLabel}>Total Amount</p>
             <p className="text-[32px] md:text-[36px] leading-none text-[#18181B] font-semibold tracking-tight">
@@ -92,7 +92,7 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
             </p>
           </div>
 
-          {/* Amount Privacy */}
+          {}
           <div className="flex justify-between items-center pt-4 border-t border-[#EEEEF3] mt-2">
             <p className={rowLabel}>Amount Privacy</p>
             <p className={rowValue}>
@@ -100,7 +100,7 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
             </p>
           </div>
 
-          {/* Sender Privacy */}
+          {}
           <div className="flex justify-between items-center pt-2">
             <p className={rowLabel}>Sender Privacy</p>
             <p className={rowValue}>
@@ -108,13 +108,13 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
             </p>
           </div>
 
-          {/* Unlock Date */}
+          {}
           <div className="flex justify-between items-start pt-2">
             <p className={rowLabel}>Unlock date and time</p>
             <p className={`${rowValue} max-w-[150px]`}>{unlockLabel}</p>
           </div>
 
-          {/* Message */}
+          {}
           <div className="space-y-1.5 pt-2">
             <p className={rowLabel}>Message for the recipient</p>
             <p className="text-[13px] text-[#717182] bg-[#FAFAFB] p-3 rounded-xl border border-[#EEEEF3] break-words">
@@ -123,7 +123,7 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
           </div>
         </div>
 
-        {/* --- Check Balance Section --- */}
+        {}
         <div className="mt-4 flex items-center justify-between bg-white border border-[#EEEEF3] rounded-2xl px-4 py-3 shadow-sm">
           <div>
             <p className="text-[13px] font-medium text-[#18181B]">Your Balance</p>
@@ -144,7 +144,7 @@ const ReviewGiftDetails: React.FC<ReviewGiftDetailsProps> = ({
           >
             {isCheckingBalance ? (
               <>
-                {/* spinner */}
+                {}
                 <svg
                   className="animate-spin h-4 w-4 text-[#5A42DE]"
                   xmlns="http://www.w3.org/2000/svg"

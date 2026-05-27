@@ -19,7 +19,7 @@ export default function BankSelection() {
 
   const handleContinue = () => {
     if (!selectedCurrency) return;
-    // Further routing or logic handled here
+    
     console.log(`Proceeding with currency: ${selectedCurrency}`);
   };
 

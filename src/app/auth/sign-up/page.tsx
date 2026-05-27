@@ -63,28 +63,28 @@ const SignUp: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Full Name validation
+    
     if (!formData.fullName.trim()) {
       newErrors.fullName = "Full name is required";
     } else if (formData.fullName.trim().length < 2) {
       newErrors.fullName = "Full name must be at least 2 characters";
     }
 
-    // Phone Number validation
+    
     if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
     } else if (!/^\d{9,15}$/.test(formData.phoneNumber.replace(/\s/g, ""))) {
       newErrors.phoneNumber = "Please enter a valid phone number";
     }
 
-    // Email validation
+    
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!validateEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address";
     }
 
-    // Password validation
+    
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else {
@@ -94,7 +94,7 @@ const SignUp: React.FC = () => {
       }
     }
 
-    // Confirm Password validation
+    
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Please confirm your password";
     } else if (formData.password !== formData.confirmPassword) {
@@ -114,14 +114,14 @@ const SignUp: React.FC = () => {
 
     setIsLoading(true);
 
-    // Simulate API call
+    
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // In a real application, you would make an API call here
+      
       console.log("Form submitted:", formData);
 
-      // Navigate to verification page
+      
       route.push("/auth/verify");
     } catch (error) {
       console.error("Sign up error:", error);
@@ -134,7 +134,7 @@ const SignUp: React.FC = () => {
   const handleChange =
     (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-      // Clear error for this field when user starts typing
+      
       if (errors[field as keyof FormErrors]) {
         setErrors((prev) => ({ ...prev, [field]: undefined }));
       }

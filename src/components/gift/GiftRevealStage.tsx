@@ -25,7 +25,7 @@ export const GiftRevealStage: React.FC<GiftRevealStageProps> = ({
     
     setStage("unwrapping");
     
-    // Stage sequence
+    
     setTimeout(() => {
       setStage("shining");
     }, 1200);

@@ -5,25 +5,19 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 type TooltipPlacement = "top" | "bottom" | "left" | "right";
 
 interface TooltipProps {
-  /** The content shown inside the tooltip popover */
+  
   content: React.ReactNode;
-  /** The trigger element (e.g. an icon button) */
+  
   children: React.ReactNode;
-  /** Preferred placement of the tooltip relative to the trigger */
+  
   placement?: TooltipPlacement;
-  /** Additional class names for the tooltip bubble */
+  
   className?: string;
-  /** Whether the tooltip can be toggled by clicking in addition to hovering */
+  
   clickable?: boolean;
 }
 
-/**
- * Context-aware Tooltip / Popover that:
- * - Opens on hover (and optionally click)
- * - Flips its placement when it would clip off-screen
- * - Renders with a high z-index so it never hides behind other stacking contexts
- * - Uses CSS-only fade+scale animation defined in globals.css
- */
+
 const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
@@ -38,7 +32,7 @@ const Tooltip: React.FC<TooltipProps> = ({
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  /** Reposition tooltip to prevent viewport clipping */
+  
   const adjustPlacement = useCallback(() => {
     if (!triggerRef.current || !tooltipRef.current) return;
 
@@ -46,7 +40,7 @@ const Tooltip: React.FC<TooltipProps> = ({
     const tip = tooltipRef.current.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const GAP = 12; // px gap between trigger and tooltip
+    const GAP = 12; 
 
     let next: TooltipPlacement = placement;
 
@@ -71,12 +65,12 @@ const Tooltip: React.FC<TooltipProps> = ({
 
   useEffect(() => {
     if (visible) {
-      // Run in next tick so the tooltip is mounted before measuring
+      
       requestAnimationFrame(adjustPlacement);
     }
   }, [visible, adjustPlacement]);
 
-  // Close on outside click
+  
   useEffect(() => {
     if (!clickable || !visible) return;
     const handleOutside = (e: MouseEvent) => {
@@ -91,7 +85,7 @@ const Tooltip: React.FC<TooltipProps> = ({
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [clickable, visible]);
 
-  // ── Position styles ────────────────────────────────────────────────────────
+  
   const positionStyles: Record<TooltipPlacement, string> = {
     top: "bottom-full left-1/2 -translate-x-1/2 mb-3",
     bottom: "top-full left-1/2 -translate-x-1/2 mt-3",
@@ -99,7 +93,7 @@ const Tooltip: React.FC<TooltipProps> = ({
     right: "left-full top-1/2 -translate-y-1/2 ml-3",
   };
 
-  // ── Arrow styles ───────────────────────────────────────────────────────────
+  
   const arrowBase =
     "absolute w-0 h-0 border-solid border-transparent pointer-events-none";
   const arrowStyles: Record<TooltipPlacement, string> = {
@@ -131,7 +125,7 @@ const Tooltip: React.FC<TooltipProps> = ({
             className,
           ].join(" ")}
         >
-          {/* Arrow */}
+          {}
           <span className={arrowStyles[resolvedPlacement]} />
 
           {content}

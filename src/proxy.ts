@@ -13,7 +13,7 @@ import {
 import type { TokenPayload } from "@/lib/tokens";
 import { computeFingerprint } from "@/lib/fingerprint";
 
-// API routes that require authentication
+
 const PROTECTED_API_ROUTES = [
   "/api/user",
   "/api/auth/logout",
@@ -24,7 +24,7 @@ const PROTECTED_API_ROUTES = [
 ];
 
 const AUTH_RATE_LIMIT = 100;
-const AUTH_RATE_WINDOW_MS = 60 * 1000; // 1 minute
+const AUTH_RATE_WINDOW_MS = 60 * 1000; 
 
 function withAuthRateLimitHeaders(
   request: NextRequest,
@@ -79,7 +79,7 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // API route protection (header-based with cookie fallback)
+  
   const isProtectedApi = PROTECTED_API_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/"),
   );
@@ -97,7 +97,7 @@ async function isFingerprintValid(
   payload: TokenPayload,
 ): Promise<boolean> {
   if (!payload.fingerprint) {
-    // No fingerprint in token — skip check (backward compat with pre-feature sessions)
+    
     return true;
   }
   const ip =
@@ -190,7 +190,7 @@ async function attemptTokenRefresh(
     console.error("[MIDDLEWARE] Token refresh failed:", error);
   }
 
-  // Refresh failed — redirect to login
+  
   return redirectToLogin(request);
 }
 
@@ -201,7 +201,7 @@ function redirectToLogin(request: NextRequest): NextResponse {
 }
 
 async function handleApiRoute(request: NextRequest): Promise<NextResponse> {
-  // Primary: Authorization header (backward-compatible with existing API clients)
+  
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.split(" ")[1];
@@ -217,7 +217,7 @@ async function handleApiRoute(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Fallback: Cookie-based auth (for browser-originated API calls)
+  
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   if (accessToken) {
     const payload = await verifyAccessToken(accessToken);

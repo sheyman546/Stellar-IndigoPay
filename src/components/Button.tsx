@@ -24,7 +24,7 @@ const Button: React.FC<ButtonProps> = ({
   const variants = {
     primary:
       "bg-[#5A45FE] text-white hover:bg-[#4b35e5] disabled:bg-[#5A45FE]/70",
-    // Add explicit disabled colors for secondary to ensure sufficient contrast
+    
     secondary: `bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-[${secondaryDisabledBg}] disabled:text-[${secondaryDisabledText}]`,
     outline:
       "border border-gray-300 bg-transparent hover:bg-gray-50 text-gray-700",

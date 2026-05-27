@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Mark payment as verified and advance status to pending_review if not already further along
+    
     const advanceable = ["otp_verified", "pending_review"];
     if (advanceable.includes(gift.status)) {
       await db

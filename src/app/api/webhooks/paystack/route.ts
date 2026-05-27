@@ -3,19 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { markGiftPaymentSuccessfulByReference } from "@/server/services/giftStatusService";
 import { createProblemDetails } from "@/lib/api-utils";
 
-/**
- * Paystack Webhook Handler
- *
- * This endpoint receives events from Paystack.
- * It cryptographically verifies the x-paystack-signature header
- * to ensure the request is authentic.
- */
+
 export async function POST(req: NextRequest) {
   try {
     const signature = req.headers.get("x-paystack-signature");
     const secret = process.env.PAYSTACK_SECRET_KEY;
 
-    // Read the raw request body as text for verification
+    
     const rawBody = await req.text();
 
     if (!secret || !signature) {
@@ -28,7 +22,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Compute HMAC SHA512 hash of the raw body using the secret key
+    
     const hash = crypto
       .createHmac("sha512", secret)
       .update(rawBody)
@@ -44,7 +38,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify that the computed hash matches the signature from Paystack
+    
     const computed = Buffer.from(hash, "hex");
     const received = Buffer.from(signature, "hex");
 
@@ -61,7 +55,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Parse the validated payload
+    
     const event = JSON.parse(rawBody);
 
     console.log(`[PAYSTACK_WEBHOOK] Received event: ${event.event}`);

@@ -73,7 +73,7 @@ export async function POST(
       );
     }
 
-    // Verify payment before proceeding with on-chain operations
+    
     if (gift.paymentReference && gift.paymentProvider) {
       try {
         let verificationResult;
@@ -109,7 +109,7 @@ export async function POST(
           );
         }
 
-        // Update gift with payment verification timestamp
+        
         await db
           .update(gifts)
           .set({ paymentVerifiedAt: new Date() })

@@ -16,7 +16,7 @@ import {
 export const supportedCurrencyCodes = ["NGN", "USD"] as const;
 export type SupportedCurrencyCode = (typeof supportedCurrencyCodes)[number];
 
-// Enums
+
 export const userStatusEnum = pgEnum("user_status", [
   "unverified",
   "active",
@@ -32,7 +32,7 @@ export const giftStatusEnum = pgEnum("gift_status", [
   "failed",
 ]);
 
-// Tables
+
 export const users = pgTable(
   "users",
   {
@@ -230,7 +230,7 @@ export const notifications = pgTable(
   },
 );
 
-// Relations
+
 export const usersRelations = relations(users, ({ many }) => ({
   emailVerifications: many(emailVerifications),
   passwordResets: many(passwordResets),

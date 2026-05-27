@@ -19,14 +19,14 @@ describe("phoneField", () => {
   });
 
   it.each([
-    "14155552671",           // missing +
-    "+0123456789",           // leading 0 in country code
-    "+1",                    // too short
-    "+1234567890123456",     // too long (16 digits)
-    "+1 415 555 2671",       // spaces
-    "+1-415-555-2671",       // dashes
-    "",                      // empty
-    "not-a-phone",           // non-numeric
+    "14155552671",           
+    "+0123456789",           
+    "+1",                    
+    "+1234567890123456",     
+    "+1 415 555 2671",       
+    "+1-415-555-2671",       
+    "",                      
+    "not-a-phone",           
   ])("rejects invalid input: %s", (phone) => {
     expect(phoneField.safeParse(phone).success).toBe(false);
   });

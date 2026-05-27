@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       const token = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-      // Invalidate existing unused tokens and create new one
+      
       await db.transaction(async (tx) => {
         await tx
           .update(passwordResets)

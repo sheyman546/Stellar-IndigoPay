@@ -37,7 +37,7 @@ export async function POST(
     const blockchainTxHash =
       body.blockchain_tx_hash || body.blockchainTxHash || null;
 
-    // Fetch the gift with sender info
+    
     const gift = await db.query.gifts.findFirst({
       where: eq(gifts.id, giftId),
       with: {
@@ -55,12 +55,12 @@ export async function POST(
       );
     }
 
-    // Ensure the requester is the sender (also rejects public gifts with null senderId)
+    
     if (!gift.senderId || gift.senderId !== userId) {
       return createProblemDetails("about:blank", "Forbidden", 403, "Forbidden");
     }
 
-    // Idempotency: already completed/sent
+    
     if (gift.status === "completed" || gift.status === "sent") {
       return createProblemDetails(
         "about:blank",
@@ -70,7 +70,7 @@ export async function POST(
       );
     }
 
-    // Must be confirmed to proceed with settlement
+    
     if (gift.status !== "confirmed") {
       return createProblemDetails(
         "about:blank",
@@ -89,7 +89,7 @@ export async function POST(
       );
     }
 
-    // Verify payment before proceeding with on-chain operations
+    
     const giftData = gift as any;
     if (giftData.paymentReference && giftData.paymentProvider) {
       try {
@@ -128,7 +128,7 @@ export async function POST(
           );
         }
 
-        // Update gift with payment verification timestamp
+        
         await db
           .update(gifts)
           .set({ paymentVerifiedAt: new Date() } as any)
@@ -144,7 +144,7 @@ export async function POST(
       }
     }
 
-    // Check sender wallet balance
+    
     const senderWallet = await db.query.wallets.findFirst({
       where: and(
         eq(wallets.userId, gift.senderId),
@@ -161,12 +161,12 @@ export async function POST(
       );
     }
 
-    // Generate a unique transaction ID
+    
     const transactionId = `txn_${crypto.randomUUID()}`;
 
-    // Atomic transaction: debit sender, credit recipient, update gift status
+    
     await db.transaction(async (tx) => {
-      // Debit sender wallet
+      
       await tx
         .update(wallets)
         .set({
@@ -180,7 +180,7 @@ export async function POST(
           ),
         );
 
-      // Credit recipient wallet (upsert in case wallet doesn't exist yet)
+      
       await tx
         .insert(wallets)
         .values({
@@ -196,14 +196,14 @@ export async function POST(
           },
         });
 
-      // Update gift status to CLAIMED
+      
       await tx
         .update(gifts)
         .set({ status: "completed", transactionId, blockchainTxHash })
         .where(eq(gifts.id, giftId));
     });
 
-    // Send notifications to both parties (non-blocking)
+    
     notifyGiftCompleted(
       gift.senderId,
       gift.recipientId,

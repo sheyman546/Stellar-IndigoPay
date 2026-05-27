@@ -14,7 +14,7 @@ import { createProblemDetails } from "@/lib/api-utils";
 
 export async function POST(request: NextRequest) {
   try {
-    // CSRF Protection: Basic Origin Check
+    
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
     if (origin && host && !origin.includes(host)) {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate Limiting: 3 requests per hour per email
+    
     if (isRateLimited(sanitizedEmail, 3, 60 * 60 * 1000)) {
       return createProblemDetails(
         "about:blank",
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Rate limiting: max 4 OTPs per 10 minutes per user
+    
     const rateLimitResult = await checkOTPRequestRateLimitByUserId(user.id);
     if (!rateLimitResult.allowed) {
       console.log(

@@ -44,8 +44,8 @@ const getDeviceId = (
     return null;
   }
 
-  // Generate a simple device ID from User-Agent
-  // This creates a consistent identifier for the same browser/device
+  
+  
   const deviceHash = btoa(userAgent)
     .replace(/[^a-zA-Z0-9]/g, "")
     .substring(0, 32);
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    // Lazy cleanup of expired OTPs (non-blocking)
+    
     cleanupExpiredOTPs().catch((error) => {
       console.error("[OTP_CLEANUP_ERROR]", error);
     });

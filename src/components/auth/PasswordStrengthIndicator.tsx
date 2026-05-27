@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface PasswordStrengthIndicatorProps {
-  strength: 0 | 1 | 2 | 3 | 4; // 0: empty, 1: weak, 2: fair, 3: good, 4: strong
+  strength: 0 | 1 | 2 | 3 | 4; 
 }
 
 const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({ strength }) => {

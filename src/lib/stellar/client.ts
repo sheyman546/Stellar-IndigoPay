@@ -34,9 +34,7 @@ interface StellarConfig {
   signer: Keypair;
 }
 
-/**
- * Basic Horizon client configuration for classic Stellar network reads.
- */
+
 export const stellarClient = new Horizon.Server(
   process.env.NEXT_PUBLIC_STELLAR_HORIZON_URL || DEFAULT_HORIZON_URL,
 );

@@ -31,7 +31,7 @@ function LoginForm() {
         setEmail(storedEmail);
       }
     } catch {
-      // Ignore localStorage failures (e.g., private mode)
+      
     }
   }, []);
 

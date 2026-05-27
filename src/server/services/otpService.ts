@@ -12,7 +12,7 @@ import {
 import { sendAdminAlert } from "./emailService";
 
 const SUSPICIOUS_OTP_THRESHOLD = 20;
-const IP_TRACKING_WINDOW_MS = 60 * 60 * 1000; // 1 hour rolling window
+const IP_TRACKING_WINDOW_MS = 60 * 60 * 1000; 
 
 type IpFailureState = {
   count: number;
@@ -150,18 +150,14 @@ export function generateOTP(): string {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-/**
- * Generates a SHA-256 hash of the OTP with a unique salt.
- */
+
 export function hashOTP(otp: string): { salt: string; hash: string } {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.createHmac("sha256", salt).update(otp).digest("hex");
   return { salt, hash };
 }
 
-/**
- * Verifies an OTP against a stored hash and salt using constant-time comparison.
- */
+
 export function verifyOTPHash(
   otp: string,
   storedHash: string,
@@ -409,7 +405,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
     });
 
     if (cumulativeFailures >= 10) {
-      const lockUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+      const lockUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000); 
       await db
         .update(users)
         .set({
@@ -436,7 +432,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
     }
 
     if (newAttempts >= 5) {
-      const lockUntil = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes
+      const lockUntil = new Date(now.getTime() + 30 * 60 * 1000); 
       await db.update(users).set({ lockUntil }).where(eq(users.id, userId));
 
       logOTPEvent(AuditEventType.ACCOUNT_LOCKED_5_ATTEMPTS, userId, {

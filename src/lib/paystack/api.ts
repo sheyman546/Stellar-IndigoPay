@@ -1,7 +1,4 @@
-/**
- * Paystack API wrapper logic.
- * Handles payouts to Nigerian bank accounts and payment verification.
- */
+
 export const paystackConfig = {
   baseUrl: "https://api.paystack.co",
   secretKey: process.env.PAYSTACK_SECRET_KEY,
@@ -11,15 +8,11 @@ export const verifyBankAccount = async (
   accountNumber: string,
   bankCode: string
 ) => {
-  // Logic to call https://api.paystack.co/bank/resolve
+  
   return { status: "mock_verified", name: "Zendvo Recipient" };
 };
 
-/**
- * Verify a Paystack payment transaction
- * @param reference - The payment reference from Paystack
- * @returns Verification result with status and transaction details
- */
+
 export const verifyPayment = async (reference: string) => {
   if (!paystackConfig.secretKey) {
     throw new Error("Paystack secret key is not configured");
@@ -60,7 +53,7 @@ export const verifyPayment = async (reference: string) => {
       success: true,
       status: transaction.status,
       reference: transaction.reference,
-      amount: transaction.amount / 100, // Convert from kobo to naira
+      amount: transaction.amount / 100, 
       currency: transaction.currency,
       paidAt: transaction.paid_at,
       gatewayResponse: transaction.gateway_response,
@@ -74,11 +67,7 @@ export const verifyPayment = async (reference: string) => {
   }
 };
 
-/**
- * Check if a payment was successful based on Paystack status
- * @param status - The payment status from Paystack
- * @returns boolean indicating if payment was successful
- */
+
 export const isPaymentSuccessful = (status: string): boolean => {
   return status === "success";
 };

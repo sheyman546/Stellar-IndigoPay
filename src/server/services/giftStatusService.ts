@@ -39,7 +39,7 @@ export async function validateGiftStatusTransition(
 
   const currentStatus = gift.status as GiftStatus;
 
-  // Check if transition is allowed
+  
   const allowedTransitions: readonly GiftStatus[] =
     GIFT_STATUS_TRANSITIONS[currentStatus] || [];
 
@@ -52,7 +52,7 @@ export async function validateGiftStatusTransition(
     };
   }
 
-  // Additional business logic validations
+  
   const validationResult = await validateBusinessRules(
     gift,
     targetStatus,
@@ -79,7 +79,7 @@ async function validateBusinessRules(
 
   switch (targetStatus) {
     case "otp_verified":
-      // Can only fund if OTP is verified (for sender-initiated gifts)
+      
       if (
         gift.otpHash &&
         gift.otpExpiresAt &&
@@ -93,7 +93,7 @@ async function validateBusinessRules(
       break;
 
     case "confirmed":
-      // Can only lock if there's a future unlock datetime
+      
       if (!gift.unlockDatetime) {
         return {
           success: false,
@@ -110,7 +110,7 @@ async function validateBusinessRules(
       break;
 
     case "completed":
-      // Can only unlock if unlock datetime has passed
+      
       if (gift.unlockDatetime && new Date(gift.unlockDatetime) > now) {
         return {
           success: false,
@@ -121,10 +121,10 @@ async function validateBusinessRules(
       break;
 
     case "sent":
-      // Can only claim if sender has sufficient funds (for funded gifts)
+      
       if (gift.senderId) {
-        // This check should be done in the actual claiming logic with proper wallet balance checks
-        // Here we just ensure the gift is in a claimable state
+        
+        
         if (gift.status !== "completed" && gift.status !== "confirmed") {
           return {
             success: false,
@@ -155,7 +155,7 @@ export async function transitionGiftStatus(
   try {
     const updateData: any = { status: targetStatus };
 
-    // Add metadata for specific transitions
+    
     if (
       (targetStatus === "completed" || targetStatus === "sent") &&
       metadata?.transactionId

@@ -1,7 +1,7 @@
 const DEFAULT_CONVERTER_API_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=ngn";
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_MS = 10 * 60 * 1000; 
 
 let cachedRate: number | null = null;
 let cacheUpdatedAt = 0;

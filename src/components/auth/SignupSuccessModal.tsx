@@ -20,7 +20,7 @@ export const SignupSuccessModal: React.FC<SignupSuccessModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
       <div className="bg-white rounded-[32px] md:rounded-[24px] w-full max-w-[360px] md:max-w-[420px] p-6 md:p-8 relative shadow-xl animate-in fade-in zoom-in duration-200">
-        {/* Close Button */}
+        {}
         <button
           onClick={onClose}
           className="absolute top-6 left-6 md:top-7 md:left-7 text-[#18181B] hover:text-[#52525B] transition-colors"
@@ -29,7 +29,7 @@ export const SignupSuccessModal: React.FC<SignupSuccessModalProps> = ({
           <X className="w-5 h-5 md:w-6 md:h-6" />
         </button>
 
-        {/* Icon with gradient background */}
+        {}
         <div className="flex justify-center mt-10 md:mt-8 mb-6 md:mb-7">
           <div className="w-[100px] h-[100px] md:w-[110px] md:h-[110px] bg-gradient-to-br from-[#A59AFF] to-[#7C6FFF] rounded-full flex items-center justify-center relative">
             <div className="w-[88px] h-[88px] md:w-[96px] md:h-[96px] bg-[#6C5CE7] rounded-full flex items-center justify-center shadow-lg">
@@ -38,7 +38,7 @@ export const SignupSuccessModal: React.FC<SignupSuccessModalProps> = ({
           </div>
         </div>
 
-        {/* Content */}
+        {}
         <div className="text-center mb-8 md:mb-9">
           <h2 className="text-[22px] md:text-[24px] font-bold text-[#18181B] mb-3 md:mb-4 leading-tight">
             Signup successful
@@ -48,7 +48,7 @@ export const SignupSuccessModal: React.FC<SignupSuccessModalProps> = ({
           </p>
         </div>
 
-        {/* Button */}
+        {}
         <div>
           <Button
             variant="primary"

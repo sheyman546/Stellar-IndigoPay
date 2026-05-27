@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     let refreshToken = (body as { refreshToken?: string }).refreshToken;
 
-    // Fallback: read from cookie if not in request body
+    
     if (!refreshToken) {
       refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
     }
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
       where: eq(refreshTokens.token, refreshToken),
     });
 
-    // Reuse detection
+    
     if (!storedToken || storedToken.revokedAt) {
-      // If a validly signed token is not in DB or is already revoked, it's a reuse!
-      // Invalidate ALL tokens for this user
+      
+      
       await db
         .update(refreshTokens)
         .set({ revokedAt: new Date() })
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fingerprint validation: reject refresh attempts from a different environment
+    
     if (storedToken.fingerprint) {
       const ip =
         request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -113,13 +113,13 @@ export async function POST(request: NextRequest) {
     const newRefreshToken = await generateRefreshToken(newPayload);
 
     await db.transaction(async (tx) => {
-      // Mark old token as revoked
+      
       await tx
         .update(refreshTokens)
         .set({ revokedAt: new Date() })
         .where(eq(refreshTokens.id, storedToken.id));
 
-      // Issue new single-use token, carrying the fingerprint forward
+      
       await tx.insert(refreshTokens).values({
         id: crypto.randomUUID(),
         userId: payload.userId,

@@ -30,16 +30,16 @@ const NewGiftSuccessModal: React.FC<GiftSuccessModalProps> = ({
     if (!isOpen) return null;
 
     const handleCopyLink = () => {
-        // For now, we'll just copy a placeholder link
+        
         navigator.clipboard.writeText("https://zendvo.com/gift/12345");
-        // TODO: Add toast notification if available in the project
+        
         alert("Gift link copied to clipboard!");
     };
 
     return (
         <div className="fixed inset-0 z-100 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="relative w-full max-w-[480px] h-auto sm:h-[420px] bg-white rounded-2xl shadow-2xl flex flex-col p-6 sm:p-8 gap-8 animate-in zoom-in-95 duration-200">
-                {/* Close Button */}
+                {}
                 <button
                     type="button"
                     onClick={onClose}
@@ -50,9 +50,9 @@ const NewGiftSuccessModal: React.FC<GiftSuccessModalProps> = ({
                 </button>
 
                 <div className="flex flex-col items-center justify-center flex-1 gap-8 mt-4 sm:mt-0">
-                    {/* Success Icon Placeholder - Decorative Dots and Checkmark */}
+                    {}
                     <div className="relative w-25 h-25 flex items-center justify-center">
-                        {/* Decorative Dots (simplified SVG based on design logic) */}
+                        {}
                         <svg
                             width="100"
                             height="100"
@@ -73,7 +73,7 @@ const NewGiftSuccessModal: React.FC<GiftSuccessModalProps> = ({
                             <circle cx="34" cy="16" r="1" fill="#00CA71" />
                         </svg>
 
-                        {/* Main Green Circle */}
+                        {}
                         <div className="bg-[#e4faf0] p-3 rounded-full flex items-center justify-center">
 
                         <div className="w-14 h-14 bg-[#00CA71] rounded-full flex items-center justify-center z-10">

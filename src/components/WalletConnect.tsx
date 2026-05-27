@@ -7,10 +7,7 @@ import Button from "@/components/Button";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "error";
 
-/**
- * Tooltip content shown adjacent to the "Connect Wallet" action.
- * Explains what the upcoming browser extension prompt will ask for.
- */
+
 const WalletTooltipContent: React.FC = () => (
   <div className="space-y-2.5">
     <p className="text-sm font-semibold leading-snug text-white">
@@ -56,7 +53,7 @@ const WalletTooltipContent: React.FC = () => (
   </div>
 );
 
-/** Info icon trigger for the tooltip */
+
 const InfoTrigger: React.FC = () => (
   <button
     type="button"
@@ -90,11 +87,11 @@ export const WalletConnect: React.FC = () => {
     setConnectionState("connecting");
 
     try {
-      // Freighter API integration point.
-      // In production this would call: await freighter.getPublicKey()
+      
+      
       await new Promise((resolve) => setTimeout(resolve, 1800));
 
-      // Simulated public key for demo purposes
+      
       const mockAddress = "GCLM...XR42";
       setWalletAddress(mockAddress);
       setConnectionState("connected");
@@ -110,7 +107,7 @@ export const WalletConnect: React.FC = () => {
 
   return (
     <div className="bg-white rounded-3xl p-8 w-full max-w-md mx-auto shadow-sm border border-gray-100 space-y-8">
-      {/* Header */}
+      {}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-[#ECEFFE] rounded-xl flex items-center justify-center text-[#5A42DE]">
           <Wallet size={20} />
@@ -125,7 +122,7 @@ export const WalletConnect: React.FC = () => {
         </div>
       </div>
 
-      {/* Status area */}
+      {}
       {connectionState === "connected" && walletAddress ? (
         <div className="flex items-center gap-3 px-4 py-3 bg-[#F0FDF4] rounded-2xl border border-[#BBF7D0]">
           <CheckCircle size={18} className="text-[#16A34A] shrink-0" />
@@ -152,10 +149,10 @@ export const WalletConnect: React.FC = () => {
         </div>
       ) : null}
 
-      {/* Primary action row */}
+      {}
       {connectionState !== "connected" ? (
         <div className="space-y-3">
-          {/* Action label + tooltip */}
+          {}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-[#18181B]">
               Connect Wallet
@@ -212,7 +209,7 @@ export const WalletConnect: React.FC = () => {
         </div>
       )}
 
-      {/* Trust badges */}
+      {}
       <div className="flex items-center justify-center gap-4 pt-2 border-t border-gray-100">
         <span className="flex items-center gap-1 text-[11px] text-[#717182]">
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
