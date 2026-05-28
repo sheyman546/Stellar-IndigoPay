@@ -186,12 +186,4 @@ export const CreateGiftSchema = z.object({
   template: z.string().optional().nullable(),
   coverImageId: z.union([z.string(), z.number()]).optional().nullable(),
   unlock_at: z.union([z.string(), z.date()]).optional().nullable(),
-}).refine((data) => {
-  if (!data.unlock_at) return true;
-  const unlockDate = new Date(data.unlock_at);
-  const oneHourFromNow = Date.now() + 60 * 60 * 1000;
-  return unlockDate.getTime() >= oneHourFromNow;
-}, {
-  message: "unlock_at must be at least 1 hour in the future",
-  path: ["unlock_at"]
 });

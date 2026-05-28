@@ -414,13 +414,12 @@ describe("POST /api/gifts", () => {
       shortCode: "xyz123ab",
     });
 
-    // Create a date 2 hours from now and format it with +01:00 timezone
-    const twoHoursFromNow = new Date(Date.now() + 2 * 60 * 60 * 1000);
-    // Create a proper ISO 8601 string with offset timezone and milliseconds
-    // We need to adjust the time to account for the +01:00 offset
+    // Create a date far enough in the future that the offset-adjusted instant
+    // still satisfies the 1 hour minimum after conversion.
+    const threeHoursFromNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const adjustedDate = new Date(
-      twoHoursFromNow.getTime() - 1 * 60 * 60 * 1000,
-    ); // Subtract 1 hour for +01:00 offset
+      threeHoursFromNow.getTime() - 1 * 60 * 60 * 1000,
+    );
 
     const year = adjustedDate.getUTCFullYear();
     const month = String(adjustedDate.getUTCMonth() + 1).padStart(2, "0");

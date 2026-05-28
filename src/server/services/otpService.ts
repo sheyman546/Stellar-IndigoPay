@@ -178,7 +178,8 @@ export async function sendOTP(phoneNumber: string): Promise<{ success: boolean; 
       return {
         success: false,
         message: "Invalid phone number format. Please use E.164 format (e.g., +2348123456789)",
-        error: "INVALID_PHONE_FORMAT"
+        error: "INVALID_PHONE_FORMAT",
+        detail: "INVALID_PHONE_FORMAT",
       };
     }
 
@@ -192,7 +193,8 @@ export async function sendOTP(phoneNumber: string): Promise<{ success: boolean; 
       return {
         success: false,
         message: "User not found with this phone number",
-        error: "USER_NOT_FOUND"
+        error: "USER_NOT_FOUND",
+        detail: "USER_NOT_FOUND",
       };
     }
 
@@ -200,7 +202,8 @@ export async function sendOTP(phoneNumber: string): Promise<{ success: boolean; 
       return {
         success: false,
         message: "Account suspended",
-        error: "ACCOUNT_SUSPENDED"
+        error: "ACCOUNT_SUSPENDED",
+        detail: "ACCOUNT_SUSPENDED",
       };
     }
 
@@ -216,7 +219,8 @@ export async function sendOTP(phoneNumber: string): Promise<{ success: boolean; 
       return {
         success: false,
         message: "Failed to send OTP SMS",
-        error: "SMS_SEND_FAILED"
+        error: "SMS_SEND_FAILED",
+        detail: "SMS_SEND_FAILED",
       };
     }
 
@@ -232,7 +236,8 @@ export async function sendOTP(phoneNumber: string): Promise<{ success: boolean; 
     return {
       success: false,
       message: "Internal server error",
-      error: "INTERNAL_ERROR"
+      error: "INTERNAL_ERROR",
+      detail: "INTERNAL_ERROR",
     };
   }
 }
@@ -296,6 +301,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
     return {
       success: false,
       message: "No verification code found. Please request a new one.",
+      detail: "NO_VERIFICATION_FOUND",
     };
   }
 
@@ -303,6 +309,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
     return {
       success: false,
       message: "Verification code has expired. Please request a new one.",
+      detail: "VERIFICATION_EXPIRED",
     };
   }
 
@@ -315,6 +322,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
       success: false,
       message: "Account is temporarily locked. Please try again later.",
       locked: true,
+      detail: "ACCOUNT_LOCKED",
     };
   }
 
@@ -323,6 +331,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
       success: false,
       message: "Maximum attempts exceeded. Account is locked.",
       locked: true,
+      detail: "MAX_ATTEMPTS_EXCEEDED",
     };
   }
 
@@ -428,6 +437,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
         locked: true,
         shouldSendAlert: true,
         lockDuration: "24 hours",
+        detail: "ACCOUNT_LOCKED_24_HOURS",
       };
     }
 
@@ -447,6 +457,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
         locked: true,
         shouldSendAlert: true,
         lockDuration: "30 minutes",
+        detail: "ACCOUNT_LOCKED_30_MINUTES",
       };
     }
 
@@ -455,6 +466,7 @@ export async function verifyOTP(userId: string, otp: string, ipAddress?: string)
       success: false,
       message: `Invalid verification code. ${remainingAttempts} attempts remaining.`,
       remainingAttempts,
+      detail: "INVALID_VERIFICATION_CODE",
     };
   }
 
@@ -518,6 +530,7 @@ export async function verifyGiftOTP(
     return {
       success: false,
       message: "No verification code found for this gift.",
+      detail: "NO_GIFT_VERIFICATION_FOUND",
     };
   }
 
@@ -530,6 +543,7 @@ export async function verifyGiftOTP(
       success: false,
       message: "Maximum attempts exceeded. This gift has been locked.",
       locked: true,
+      detail: "GIFT_LOCKED",
     };
   }
 
@@ -537,6 +551,7 @@ export async function verifyGiftOTP(
     return {
       success: false,
       message: "Verification code has expired. Please request a new one.",
+      detail: "GIFT_VERIFICATION_EXPIRED",
     };
   }
 
@@ -569,6 +584,7 @@ export async function verifyGiftOTP(
       message: `Invalid verification code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? "s" : ""} remaining.`,
       remainingAttempts,
       locked: remainingAttempts <= 0,
+      detail: "INVALID_GIFT_VERIFICATION_CODE",
     };
   }
 

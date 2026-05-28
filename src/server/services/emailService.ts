@@ -55,6 +55,7 @@ export async function sendAdminAlert(data: {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
       message: "Failed to send admin security alert",
+      detail: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -100,6 +101,7 @@ export async function sendVerificationEmail(
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
       message: "Failed to send verification email",
+      detail: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -146,6 +148,7 @@ export async function sendForgotPasswordEmail(
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
       message: "Failed to send forgot password email",
+      detail: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -188,6 +191,7 @@ export async function sendPasswordResetConfirmationEmail(
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
       message: "Failed to send password reset confirmation email",
+      detail: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -232,6 +236,7 @@ export async function sendSecurityAlertEmail(
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
       message: "Failed to send security alert email",
+      detail: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

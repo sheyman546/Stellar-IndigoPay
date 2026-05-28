@@ -30,6 +30,11 @@ describe("Token Flow Tests", () => {
     (db.transaction as jest.Mock).mockImplementation(
       async (cb: (tx: unknown) => Promise<void>) => {
         const tx = {
+          update: jest.fn(() => ({
+            set: jest.fn(() => ({
+              where: jest.fn(() => Promise.resolve()),
+            })),
+          })),
           delete: jest.fn(() => ({
             where: jest.fn(() => Promise.resolve()),
           })),
