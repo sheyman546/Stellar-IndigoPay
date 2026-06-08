@@ -1,55 +1,68 @@
-# Zendvo
+<h1 align="center">Zendvo</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-16.x-black?style=for-the-badge&logo=next.js" alt="Next.js 16" />
+  <img src="https://img.shields.io/badge/Next.js-15.x-black?style=for-the-badge&logo=next.js" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue?style=for-the-badge&logo=typescript" alt="TS 5" />
   <img src="https://img.shields.io/badge/Drizzle-ORM-teal?style=for-the-badge&logo=drizzle" alt="Drizzle" />
   <img src="https://img.shields.io/badge/Stellar-Soroban-black?style=for-the-badge&logo=stellar" alt="Stellar" />
 </p>
 
-**Zendvo** is an expense, savings and gifting platform that transforms digital money transfers into memorable experiences. It enables users to send cash gifts that remain completely hidden and locked until a predetermined date and time, save for a specific item or date and calculate daily expenses acccurately. 
+**Zendvo** is an expense, savings, and gifting platform that transforms digital money transfers into memorable experiences. It enables users to send cash gifts that remain completely hidden and locked until a predetermined date and time, save toward a specific item or goal, and track daily expenses accurately.
 
 ## Features
 
-- **Decentralized Time-Locking**: Funds are securely locked in Soroban smart contracts and only unlockable after the specified time.
-- **Stablecoin Preservation**: Utilizes USDC to ensure the gift's value remains stable from creation to reveal.
-- **Bank Integration**: Seamless on/off-ramps connecting global stablecoin liquidity with local financial systems.
-- **Surprise Experience**: High-end UI/UX designed to build anticipation and mystery around digital gifts.
-- **Low-Cost Global Transfers**: Leveraging Stellar's high speed and near-zero fees for efficient gifting.
+- **Time-Locked Gifting**: Funds are locked in Soroban smart contracts and only released after a specified date and time, enforced entirely on-chain.
+- **Stablecoin Preservation**: Uses USDC on Stellar to keep gift value stable from creation to reveal, eliminating volatility risk.
+- **Yield on Savings**: Idle savings earn yield through Stellar's AMM liquidity pools or Blend Protocol lending, so balances grow while waiting.
+- **Bank Integration**: Seamless on/off-ramps connecting stablecoin liquidity to local bank accounts, with Paystack powering Nigerian NGN payouts.
+- **Surprise Experience**: UI/UX built around anticipation, revealing gifts only at the exact unlock moment.
+- **Low-Cost Global Transfers**: Stellar's 3–5 second finality and near-zero fees make cross-border gifting practical at any amount.
+- **Expense Tracking**: Accurate daily expense calculation with categorization and spending summaries.
 
 ## Stack
 
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
 - **Language**: [TypeScript 5](https://www.typescriptlang.org/)
 - **Database**: PostgreSQL with [Drizzle ORM](https://orm.drizzle.team/)
 - **Smart Contracts**: Stellar Soroban (Rust)
-- **Styling**: Vanilla CSS & Tailwind CSS 4
-- **Integrations**: Stellar SDK, Stripe, Paystack
+- **Styling**: Tailwind CSS 4
+- **Blockchain**: Stellar SDK, Soroban SDK
+- **Payments**: Stripe, Paystack
+
+## Stellar Integration
+
+Zendvo uses the Stellar ecosystem for its core financial primitives:
+
+| Feature | Stellar Primitive |
+|---|---|
+| Time-locked gifts | Soroban smart contracts with `time_lock` logic |
+| Stable transfers | USDC (Circle) on Stellar |
+| Savings yield | Stellar AMM pools / Blend Protocol |
+| Low-fee settlement | Stellar Consensus Protocol (SCP) |
+| On/off-ramp | Anchor-compatible deposit/withdrawal |
+
+> Stellar does not have native proof-of-stake staking. Yield on savings is earned through liquidity provision in Stellar's built-in AMM or via the Blend Protocol lending market — both non-custodial and on-chain.
 
 ## Quick Start
 
-1. **Clone and Prepare**:
-
+1. **Clone and prepare**:
    ```bash
    git clone https://github.com/codeze-us/zendvo.git
    cd zendvo
    cp .env.example .env
    ```
 
-2. **Install Dependencies**:
-
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. **Database Setup**:
-
+3. **Database setup**:
    ```bash
    npm run db:push
    ```
 
-4. **Run in Development**:
-
+4. **Run in development**:
    ```bash
    npm run dev
    ```
@@ -58,17 +71,15 @@
 
 ```
 src/
-├── app/                  # Next.js App Router (Pages & API)
-├── server/               # Backend Business Logic & Services
-├── components/           # Modular UI Component Library
-├── lib/                  # Blockchain & Payment Integrations
-├── types/                # Global TypeScript Definitions
-└── styles/               # Design System & Styling
+├── app/                  # Next.js App Router (pages & API routes)
+├── server/               # Backend business logic & services
+├── components/           # Modular UI component library
+├── lib/                  # Blockchain & payment integrations
+├── types/                # Global TypeScript definitions
+└── styles/               # Design system & styling
 ```
 
 ## Documentation
-
-Comprehensive documentation for Zendvo:
 
 - [Documentation Index](./docs/README.md)
 - [Architecture Overview](./docs/architecture/overview.md)
@@ -78,24 +89,24 @@ Comprehensive documentation for Zendvo:
 ## Use Cases
 
 ### Surprise Birthdays
-
-Send a cash gift weeks in advance that only unlocks at exactly 12:00 AM on the recipient's birthday, creating a perfect digital surprise.
+Send a cash gift weeks in advance that only unlocks at exactly 12:00 AM on the recipient's birthday.
 
 ### Graduation Gifts
-
-Support a student's future by locking funds until their graduation date, ensuring the gift is used for the intended celebration.
+Lock funds until a graduation date, ensuring the gift lands at the right moment.
 
 ### Cross-Border Gifting
+Send USDC from anywhere in the world to Nigerian recipients with local bank payout and time-locked reveal logic.
 
-Send stablecoins from anywhere in the world to Nigerian recipients with local bank payout support and time-locked reveal logic.
+### Goal Savings
+Set a savings target for an item or date, earn yield while saving, and withdraw when ready.
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+We welcome contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+MIT — see [LICENSE](./LICENSE).
 
 ## Support
 
