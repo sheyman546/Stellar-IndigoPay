@@ -1,5 +1,3 @@
-
-
 export enum AuditEventType {
   OTP_GENERATED = "OTP_GENERATED",
   OTP_VERIFIED_SUCCESS = "OTP_VERIFIED_SUCCESS",
@@ -7,15 +5,12 @@ export enum AuditEventType {
   ACCOUNT_LOCKED_5_ATTEMPTS = "ACCOUNT_LOCKED_5_ATTEMPTS",
   ACCOUNT_LOCKED_10_ATTEMPTS = "ACCOUNT_LOCKED_10_ATTEMPTS",
   ACCOUNT_UNLOCKED = "ACCOUNT_UNLOCKED",
-  GIFT_OTP_FAILED = "GIFT_OTP_FAILED",
-  GIFT_OTP_LOCKED = "GIFT_OTP_LOCKED",
 }
 
 interface AuditLogEntry {
   timestamp: Date;
   eventType: AuditEventType;
   userId?: string;
-  giftId?: string;
   metadata?: Record<string, unknown>;
   message: string;
 }
@@ -46,17 +41,3 @@ export function logOTPEvent(
   });
 }
 
-
-export function logGiftOTPEvent(
-  eventType: AuditEventType,
-  giftId: string,
-  metadata?: Record<string, unknown>,
-): void {
-  logAuditEvent({
-    timestamp: new Date(),
-    eventType,
-    giftId,
-    metadata,
-    message: `Gift OTP event: ${eventType} for gift ${giftId}`,
-  });
-}

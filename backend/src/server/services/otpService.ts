@@ -1,12 +1,11 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db } from "@/lib/db";
-import { users, emailVerifications, gifts } from "@/lib/db/schema";
+import { users, emailVerifications } from "@/lib/db/schema";
 import { eq, and, desc, lt, or, gt, sql } from "drizzle-orm";
 import { validateE164PhoneNumber, sanitizePhoneNumber } from "@/lib/validation";
 import {
   AuditEventType,
-  logGiftOTPEvent,
   logOTPEvent,
 } from "@/server/services/auditService";
 import { sendAdminAlert } from "./emailService";
@@ -499,104 +498,4 @@ export async function cleanupExpiredOTPs(): Promise<number> {
   return result.length;
 }
 
-export async function storeGiftOTP(giftId: string, otp: string) {
-  const saltRounds = 10;
-  const otpHash = await bcrypt.hash(otp, saltRounds);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  return await db
-    .update(gifts)
-    .set({
-      otpHash,
-      otpExpiresAt: expiresAt,
-      otpAttempts: 0,
-    })
-    .where(eq(gifts.id, giftId))
-    .returning();
-}
-
-const MAX_GIFT_OTP_ATTEMPTS = 5;
-
-export async function verifyGiftOTP(
-  gift: {
-    id: string;
-    otpHash: string | null;
-    otpExpiresAt: Date | null;
-    otpAttempts: number;
-  },
-  otp: string,
-) {
-  if (!gift.otpHash || !gift.otpExpiresAt) {
-    return {
-      success: false,
-      message: "No verification code found for this gift.",
-      detail: "NO_GIFT_VERIFICATION_FOUND",
-    };
-  }
-
-  if (gift.otpAttempts >= MAX_GIFT_OTP_ATTEMPTS) {
-    logGiftOTPEvent(AuditEventType.GIFT_OTP_LOCKED, gift.id, {
-      attempts: gift.otpAttempts,
-    });
-
-    return {
-      success: false,
-      message: "Maximum attempts exceeded. This gift has been locked.",
-      locked: true,
-      detail: "GIFT_LOCKED",
-    };
-  }
-
-  if (new Date() > gift.otpExpiresAt) {
-    return {
-      success: false,
-      message: "Verification code has expired. Please request a new one.",
-      detail: "GIFT_VERIFICATION_EXPIRED",
-    };
-  }
-
-  const isValid = await bcrypt.compare(otp, gift.otpHash);
-
-  if (!isValid) {
-    const newAttempts = gift.otpAttempts + 1;
-
-    await db
-      .update(gifts)
-      .set({ otpAttempts: newAttempts })
-      .where(eq(gifts.id, gift.id));
-
-    logGiftOTPEvent(AuditEventType.GIFT_OTP_FAILED, gift.id, {
-      attemptNumber: newAttempts,
-      remainingAttempts: MAX_GIFT_OTP_ATTEMPTS - newAttempts,
-    });
-
-    const remainingAttempts = MAX_GIFT_OTP_ATTEMPTS - newAttempts;
-
-    if (remainingAttempts <= 0) {
-      logGiftOTPEvent(AuditEventType.GIFT_OTP_LOCKED, gift.id, {
-        attempts: newAttempts,
-        reason: "Maximum attempts exceeded",
-      });
-    }
-
-    return {
-      success: false,
-      message: `Invalid verification code. ${remainingAttempts} attempt${remainingAttempts !== 1 ? "s" : ""} remaining.`,
-      remainingAttempts,
-      locked: remainingAttempts <= 0,
-      detail: "INVALID_GIFT_VERIFICATION_CODE",
-    };
-  }
-
-  await db
-    .update(gifts)
-    .set({
-      status: "otp_verified",
-      otpHash: null,
-      otpExpiresAt: null,
-      otpAttempts: 0,
-    })
-    .where(eq(gifts.id, gift.id));
-
-  return { success: true, message: "Gift OTP verified successfully!" };
-}

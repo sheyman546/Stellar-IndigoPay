@@ -44,7 +44,7 @@ describe("Phone Number Uniqueness Constraint", () => {
         status: "active",
       };
 
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const result = await findUserByPhoneNumber("+2348123456789");
 
@@ -55,7 +55,7 @@ describe("Phone Number Uniqueness Constraint", () => {
     });
 
     it("should return null for non-existent phone number", async () => {
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(null);
+      (db.query.users.findFirst as any).mockResolvedValue(null);
 
       const result = await findUserByPhoneNumber("+2349999999999");
 
@@ -85,7 +85,7 @@ describe("Phone Number Uniqueness Constraint", () => {
         values: jest.fn().mockReturnThis(),
         returning: jest.fn().mockResolvedValue([mockCreatedUser]),
       };
-      (db.insert as jest.Mock).mockReturnValue(mockInsert);
+      (db.insert as any).mockReturnValue(mockInsert);
 
       const result = await createUser(userInput);
 
@@ -123,7 +123,7 @@ describe("Phone Number Uniqueness Constraint", () => {
         values: jest.fn().mockReturnThis(),
         returning: jest.fn().mockResolvedValue([mockCreatedUser]),
       };
-      (db.insert as jest.Mock).mockReturnValue(mockInsert);
+      (db.insert as any).mockReturnValue(mockInsert);
 
       const result = await createUser(userInput);
 
@@ -157,7 +157,7 @@ describe("Phone Number Uniqueness Constraint", () => {
           },
         ]),
       };
-      (db.insert as jest.Mock).mockReturnValue(mockInsert);
+      (db.insert as any).mockReturnValue(mockInsert);
 
       await createUser(userInput);
 
@@ -187,7 +187,7 @@ describe("Phone Number Uniqueness Constraint", () => {
         values: jest.fn().mockReturnThis(),
         returning: jest.fn().mockRejectedValue(uniqueViolationError),
       };
-      (db.insert as jest.Mock).mockReturnValue(mockInsert);
+      (db.insert as any).mockReturnValue(mockInsert);
 
       const userInput = {
         email: "duplicate@example.com",
@@ -212,7 +212,7 @@ describe("Phone Number Uniqueness Constraint", () => {
       };
 
       // Mock existing user found by phone
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(existingUser);
+      (db.query.users.findFirst as any).mockResolvedValue(existingUser);
 
       const result = await findUserByPhoneNumber("+2348123456789");
 

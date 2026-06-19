@@ -3,7 +3,6 @@ import {
   storeOTP,
   verifyOTP,
   cleanupExpiredOTPs,
-  verifyGiftOTP,
 } from "../src/server/services/otpService";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
@@ -94,30 +93,6 @@ describe("OTP Service", () => {
     it("should return deleted count", async () => {
       const count = await cleanupExpiredOTPs();
       expect(count).toBe(2);
-    });
-  });
-
-  describe("verifyGiftOTP", () => {
-    const validGift = {
-      id: "gift-123",
-      otpHash: "$2a$10$abcdefghijklmnopqrstuv1234567890123456789012",
-      otpExpiresAt: new Date(Date.now() + 600000),
-      otpAttempts: 0,
-    };
-
-    it("should fail if otpHash is null", async () => {
-      const result = await verifyGiftOTP(
-        { ...validGift, otpHash: null },
-        "123456",
-      );
-      expect(result.detail).toBeDefined();
-    });
-
-    it("should increment attempts on invalid OTP", async () => {
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-      const result = await verifyGiftOTP(validGift, "000000");
-      expect(result.detail).toBeDefined();
-      expect(db.update).toHaveBeenCalled();
     });
   });
 });

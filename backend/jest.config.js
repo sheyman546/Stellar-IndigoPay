@@ -17,4 +17,7 @@ module.exports = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@prisma/client$": "<rootDir>/src/lib/prisma-client-mock.ts",
   },
+  modulePathIgnorePatterns: [
+    "<rootDir>/dist/",
+  ],
 };

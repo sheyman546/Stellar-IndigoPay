@@ -8,7 +8,6 @@ export async function register() {
   
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { checkMigrationStatus } = await import("./lib/db/migration-checker");
-    const { startNotificationCleanupJob } = await import("./server/jobs/cleanupNotifications");
 
     console.log("🔍 Checking database migration status...");
 
@@ -36,7 +35,5 @@ export async function register() {
       console.error("❌ Failed to check migration status:", error);
       console.error("⚠️  Server will continue, but this should be investigated.");
     }
-
-    startNotificationCleanupJob();
   }
 }

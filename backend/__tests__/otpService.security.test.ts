@@ -14,10 +14,9 @@ import {
 import {
   verifyOTP,
   storeOTP,
-  verifyGiftOTP,
 } from "@/server/services/otpService";
 import { db } from "@/lib/db";
-import { users, emailVerifications, gifts } from "@/lib/db/schema";
+import { users, emailVerifications } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import * as auditService from "@/server/services/auditService";
 
@@ -78,11 +77,11 @@ describe("OTP Security - Dual-Window Locking", () => {
       };
 
       // Mock 5th failed attempt
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 4, // 5th attempt will trigger lock
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const result = await verifyOTP(mockUserId, "wrong-otp");
 
@@ -108,10 +107,10 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(),
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue(
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue(
         mockVerification,
       );
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(lockedUser);
+      (db.query.users.findFirst as any).mockResolvedValue(lockedUser);
 
       const result = await verifyOTP(mockUserId, mockOTP);
 
@@ -128,11 +127,11 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(),
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 2, // 3rd attempt
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const result = await verifyOTP(mockUserId, "wrong-otp");
 
@@ -152,11 +151,11 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(now.getTime() - 30 * 60 * 1000), // 30 mins ago
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 2,
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const result = await verifyOTP(mockUserId, "wrong-otp");
 
@@ -185,11 +184,11 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(now.getTime() - 61 * 60 * 1000), // 61 mins ago
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 0,
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const setMock = jest.fn(() => ({
         where: jest.fn(() => Promise.resolve()),
@@ -197,13 +196,13 @@ describe("OTP Security - Dual-Window Locking", () => {
       const updateMock = jest.fn(() => ({
         set: setMock,
       }));
-      (db.update as jest.Mock).mockImplementation(updateMock);
+      (db.update as any).mockImplementation(updateMock);
 
       await verifyOTP(mockUserId, "wrong-otp");
 
       // Verify that cumulative failures was reset to 1
       expect(updateMock).toHaveBeenCalled();
-      expect(setMock).toHaveBeenCalledWith(
+      expect(setMock as any).toHaveBeenCalledWith(
         expect.objectContaining({
           otpFailedAttempts: 1, // Reset to 1 (current attempt)
         }),
@@ -219,18 +218,18 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(now.getTime() - 20 * 60 * 1000), // 20 mins ago
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 1, // 2nd attempt on this OTP
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const updateMock = jest.fn(() => ({
         set: jest.fn(() => ({
           where: jest.fn(() => Promise.resolve()),
         })),
       }));
-      (db.update as jest.Mock).mockImplementation(updateMock);
+      (db.update as any).mockImplementation(updateMock);
 
       await verifyOTP(mockUserId, "wrong-otp");
 
@@ -253,11 +252,11 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(now.getTime() - 30 * 60 * 1000),
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 4, // Also 5th attempt on this OTP
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const result = await verifyOTP(mockUserId, "wrong-otp");
 
@@ -284,22 +283,22 @@ describe("OTP Security - Dual-Window Locking", () => {
       // Mock successful verification
       const mockVerifyOTPHash = jest.fn(() => true);
       jest.mock("@/server/services/otpService", () => ({
-        ...jest.requireActual("@/server/services/otpService"),
+        ...(jest.requireActual("@/server/services/otpService") as any),
         verifyOTPHash: mockVerifyOTPHash,
       }));
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue(
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue(
         mockVerification,
       );
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       const updateMock = jest.fn(() => ({
         set: jest.fn(() => ({
           where: jest.fn(() => Promise.resolve()),
         })),
       }));
-      (db.update as jest.Mock).mockImplementation(updateMock);
-      (db.delete as jest.Mock).mockReturnValue({
+      (db.update as any).mockImplementation(updateMock);
+      (db.delete as any).mockReturnValue({
         where: jest.fn(() => Promise.resolve()),
       });
 
@@ -316,11 +315,11 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(),
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 1,
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       await verifyOTP(mockUserId, "wrong-otp");
 
@@ -343,11 +342,11 @@ describe("OTP Security - Dual-Window Locking", () => {
         otpAttemptsWindowStart: new Date(),
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue({
         ...mockVerification,
         attempts: 4,
       });
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue(mockUser);
+      (db.query.users.findFirst as any).mockResolvedValue(mockUser);
 
       await verifyOTP(mockUserId, "wrong-otp");
 
@@ -370,7 +369,7 @@ describe("OTP Security - Dual-Window Locking", () => {
         expiresAt: new Date(Date.now() - 1000), // Expired
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue(
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue(
         expiredVerification,
       );
 
@@ -381,7 +380,7 @@ describe("OTP Security - Dual-Window Locking", () => {
     });
 
     it("should handle missing verification", async () => {
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue(
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue(
         null,
       );
 
@@ -397,10 +396,10 @@ describe("OTP Security - Dual-Window Locking", () => {
         attempts: 5,
       };
 
-      (db.query.emailVerifications.findFirst as jest.Mock).mockResolvedValue(
+      (db.query.emailVerifications.findFirst as any).mockResolvedValue(
         maxAttemptsVerification,
       );
-      (db.query.users.findFirst as jest.Mock).mockResolvedValue({
+      (db.query.users.findFirst as any).mockResolvedValue({
         id: mockUserId,
         lockUntil: null,
         otpFailedAttempts: 0,
@@ -413,56 +412,5 @@ describe("OTP Security - Dual-Window Locking", () => {
       expect(result.locked).toBe(true);
       expect(result.message).toContain("Maximum attempts exceeded");
     });
-  });
-});
-
-describe("Gift OTP Security", () => {
-  const mockGift = {
-    id: "gift-123",
-    otpHash: "$2a$10$hashedOTP",
-    otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    otpAttempts: 0,
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it("should log gift OTP failures", async () => {
-    const gift = { ...mockGift, otpAttempts: 2 };
-
-    await verifyGiftOTP(gift, "wrong-otp");
-
-    expect(auditService.logGiftOTPEvent).toHaveBeenCalledWith(
-      auditService.AuditEventType.GIFT_OTP_FAILED,
-      gift.id,
-      expect.objectContaining({
-        attemptNumber: 3,
-        remainingAttempts: 2,
-      }),
-    );
-  });
-
-  it("should log gift OTP lock event", async () => {
-    const gift = { ...mockGift, otpAttempts: 5 };
-
-    await verifyGiftOTP(gift, "wrong-otp");
-
-    expect(auditService.logGiftOTPEvent).toHaveBeenCalledWith(
-      auditService.AuditEventType.GIFT_OTP_LOCKED,
-      gift.id,
-      expect.objectContaining({
-        attempts: 5,
-      }),
-    );
-  });
-
-  it("should lock gift after 5 failed attempts", async () => {
-    const gift = { ...mockGift, otpAttempts: 4 };
-
-    const result = await verifyGiftOTP(gift, "wrong-otp");
-
-    expect(result.locked).toBe(true);
-    expect(result.remainingAttempts).toBe(0);
   });
 });
