@@ -81,9 +81,9 @@ describe("Phone Number Uniqueness Constraint", () => {
         status: "unverified",
       };
 
-      const mockInsert = {
+      const mockInsert: any = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([mockCreatedUser]),
+        returning: jest.fn<any>().mockResolvedValue([mockCreatedUser]),
       };
       (db.insert as any).mockReturnValue(mockInsert);
 
@@ -119,9 +119,9 @@ describe("Phone Number Uniqueness Constraint", () => {
         status: "unverified",
       };
 
-      const mockInsert = {
+      const mockInsert: any = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([mockCreatedUser]),
+        returning: jest.fn<any>().mockResolvedValue([mockCreatedUser]),
       };
       (db.insert as any).mockReturnValue(mockInsert);
 
@@ -147,9 +147,9 @@ describe("Phone Number Uniqueness Constraint", () => {
 
       const expectedSanitized = sanitizePhoneNumber("08123456789");
 
-      const mockInsert = {
+      const mockInsert: any = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([
+        returning: jest.fn<any>().mockResolvedValue([
           {
             id: "user-123",
             ...userInput,
@@ -183,9 +183,9 @@ describe("Phone Number Uniqueness Constraint", () => {
       typedUniqueViolationError.detail =
         "Key (phone_number)=(+2348123456789) already exists.";
 
-      const mockInsert = {
+      const mockInsert: any = {
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockRejectedValue(uniqueViolationError),
+        returning: jest.fn<any>().mockRejectedValue(uniqueViolationError),
       };
       (db.insert as any).mockReturnValue(mockInsert);
 
