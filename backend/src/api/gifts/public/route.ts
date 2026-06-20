@@ -1,10 +1,36 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  validateEmail,
-  sanitizeInput,
-} from "@/lib/validation";
-import { isRateLimited } from "@/lib/rate-limiter";
+import { z } from "zod";
 import { createProblemDetails } from "@/lib/api-utils";
+import { sanitizePhoneNumber } from "@/lib/validation";
+import { findUserByPhoneNumber } from "@/server/db/authRepository";
+import { createGift } from "@/server/db/giftRepository";
+import {
+  createCheckoutSession,
+  StripeCheckoutError,
+} from "@/server/services/stripeService";
+
+const bodySchema = z.object({
+  recipientPhone: z.string().trim().min(7, "Recipient phone number is required"),
+  amount: z
+    .number({ invalid_type_error: "Amount must be a number" })
+    .positive("Amount must be positive")
+    .max(1_000_000, "Amount exceeds maximum allowed value")
+    .refine((v) => {
+      const parts = v.toString().split(".");
+      return parts.length === 1 || parts[1].length <= 2;
+    }, "Amount must have at most 2 decimal places"),
+  currency: z
+    .string()
+    .trim()
+    .min(1, "Currency is required")
+    .max(3, "Currency code must be at most 3 characters")
+    .transform((v) => v.toUpperCase()),
+  senderName: z.string().trim().min(1).max(200).optional(),
+  senderEmail: z.string().trim().email("Invalid sender email").optional(),
+  message: z.string().trim().max(1000).optional(),
+  isAnonymous: z.boolean().optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,84 +44,112 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > 10240) {
-      return createProblemDetails(
-        "about:blank",
-        "Payload Too Large",
-        413,
-        "Request body too large",
-      );
-    }
-
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-    if (isRateLimited(ip)) {
-      return createProblemDetails(
-        "about:blank",
-        "Too Many Requests",
-        429,
-        "Too many requests. Please try again later.",
-      );
-    }
-
-    const body = await request.json();
-    const { senderEmail, "confirm-email": confirmEmail } = body;
-
-    if (!senderEmail) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
       return createProblemDetails(
         "about:blank",
         "Bad Request",
         400,
-        "senderEmail is required",
+        "Invalid JSON body",
       );
     }
 
-    if (!confirmEmail) {
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) {
       return createProblemDetails(
         "about:blank",
-        "Bad Request",
-        400,
-        "confirm-email is required",
+        "Unprocessable Entity",
+        422,
+        parsed.error.issues[0]?.message ?? "Validation failed",
+        undefined,
+        {
+          errors: parsed.error.issues.map((i) => ({
+            field: i.path.join("."),
+            message: i.message,
+          })),
+        },
       );
     }
 
-    const sanitizedEmail = sanitizeInput(senderEmail);
-    const sanitizedConfirm = sanitizeInput(confirmEmail);
+    const {
+      recipientPhone,
+      amount,
+      currency,
+      senderName,
+      senderEmail,
+      message,
+      isAnonymous,
+    } = parsed.data;
 
-    if (!validateEmail(sanitizedEmail)) {
+    const normalizedPhone = sanitizePhoneNumber(recipientPhone);
+    const recipient = await findUserByPhoneNumber(normalizedPhone);
+
+    if (!recipient) {
       return createProblemDetails(
         "about:blank",
-        "Bad Request",
-        400,
-        "Invalid sender email format",
+        "Not Found",
+        404,
+        "Recipient not found",
       );
     }
 
-    if (sanitizedEmail.toLowerCase() !== sanitizedConfirm.toLowerCase()) {
-      return createProblemDetails(
-        "about:blank",
-        "Bad Request",
-        400,
-        "senderEmail must match confirmEmail",
-      );
+    const paymentReference = `gift_${crypto.randomUUID()}`;
+
+    const gift = await createGift({
+      recipientId: recipient.id,
+      amount,
+      currency,
+      paymentReference,
+      paymentProvider: "stripe",
+      senderName: senderName ?? null,
+      senderEmail: senderEmail ?? null,
+      message: message ?? null,
+      recipientPhone: normalizedPhone,
+      isAnonymous: isAnonymous ?? false,
+    });
+
+    let checkoutUrl: string;
+    let sessionId: string;
+
+    try {
+      // Stripe requires the smallest currency unit. Math.round(amount * 100)
+      // assumes a 2-decimal currency (NGN, USD, GBP, EUR). Zero-decimal
+      // currencies (JPY, KRW) would need a different multiplier — follow-up.
+      const stripeAmount = Math.round(amount * 100);
+
+      ({ checkoutUrl, sessionId } = await createCheckoutSession({
+        giftId: gift.id,
+        paymentReference,
+        amount: stripeAmount,
+        currency,
+        senderEmail: senderEmail ?? null,
+      }));
+    } catch (err) {
+      if (err instanceof StripeCheckoutError) {
+        console.error("[PUBLIC_GIFT_STRIPE_ERROR]", err.cause ?? err);
+        return createProblemDetails(
+          "about:blank",
+          "Payment Processor Error",
+          502,
+          "Unable to create payment session. The gift has been saved and can be retried.",
+        );
+      }
+      throw err;
     }
 
     return NextResponse.json(
       {
-        success: true,
-        data: {
-          giftId: "",
-          status: "pending_review",
-          slug: "",
-          shortCode: "",
-        },
+        giftId: gift.id,
+        paymentReference,
+        checkoutUrl,
+        sessionId,
       },
       { status: 201 },
     );
   } catch (error) {
-    console.error("[GIFTS_PUBLIC_POST_ERROR]", error);
-
+    console.error("[PUBLIC_GIFT_CREATE_ERROR]", error);
     return createProblemDetails(
       "about:blank",
       "Internal Server Error",
