@@ -442,6 +442,81 @@ paths:
         "500":
           description: Internal server error
 
+  /api/gifts/locked:
+    get:
+      summary: List locked gifts pending release
+      description: >
+        Returns gifts whose unlock date is still in the future where the
+        authenticated user is either the sender or the recipient, sorted by
+        release date (soonest first). Used by the dashboard to initialize the
+        "Gift Release date" countdown timers.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of locked gifts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  total:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        status:
+                          type: string
+                        amount:
+                          type: number
+                          description: >
+                            Returned as 0 for recipients when the gift amount is
+                            hidden; always visible to the sender.
+                        currency:
+                          type: string
+                        message:
+                          type: string
+                          nullable: true
+                        template:
+                          type: string
+                          nullable: true
+                        unlock_datetime:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        hide_amount:
+                          type: boolean
+                        hide_sender:
+                          type: boolean
+                        is_anonymous:
+                          type: boolean
+                        sender_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                          description: >
+                            Hidden (null) from recipients when the gift is
+                            anonymous or the sender is hidden.
+                        recipient_id:
+                          type: string
+                          format: uuid
+                        role:
+                          type: string
+                          enum: [sender, recipient]
+                          description: The viewer's relationship to the gift.
+                        created_at:
+                          type: string
+                          format: date-time
+        "401":
+          description: Unauthorized
+
   /api/gifts:
     get:
       summary: Get user gifts

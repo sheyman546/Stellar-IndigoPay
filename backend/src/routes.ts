@@ -19,6 +19,10 @@ import { POST as sendVerificationPost } from "./api/auth/send-verification/route
 import { POST as verifyEmailPost } from "./api/auth/verify-email/route";
 import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
 
+
+// Gifts
+import { GET as lockedGiftsGet } from "./api/gifts/locked/route";
+
 export const apiRouter = Router();
 
 // 1. Authentication routes
@@ -38,4 +42,7 @@ apiRouter.post("/api/auth/send-phone-otp", makeExpressHandler(sendPhoneOtpPost))
 apiRouter.post("/api/auth/send-verification", makeExpressHandler(sendVerificationPost));
 apiRouter.post("/api/auth/verify-email", makeExpressHandler(verifyEmailPost));
 apiRouter.post("/api/auth/verify-otp", makeExpressHandler(verifyOtpPost));
+
+// 2. Gift routes
+apiRouter.get("/api/gifts/locked", makeExpressHandler(lockedGiftsGet));
 
