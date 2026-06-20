@@ -19,6 +19,9 @@ import { POST as sendVerificationPost } from "./api/auth/send-verification/route
 import { POST as verifyEmailPost } from "./api/auth/verify-email/route";
 import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
 
+// Users
+import { GET as accountDetailsGet } from "./api/users/me/account-details/route";
+
 export const apiRouter = Router();
 
 // 1. Authentication routes
@@ -38,4 +41,7 @@ apiRouter.post("/api/auth/send-phone-otp", makeExpressHandler(sendPhoneOtpPost))
 apiRouter.post("/api/auth/send-verification", makeExpressHandler(sendVerificationPost));
 apiRouter.post("/api/auth/verify-email", makeExpressHandler(verifyEmailPost));
 apiRouter.post("/api/auth/verify-otp", makeExpressHandler(verifyOtpPost));
+
+// 2. User routes
+apiRouter.get("/api/users/me/account-details", makeExpressHandler(accountDetailsGet));
 
