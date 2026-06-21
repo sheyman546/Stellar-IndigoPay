@@ -22,6 +22,9 @@ import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
 // Users
 import { GET as accountDetailsGet } from "./api/users/me/account-details/route";
 
+// Gifts
+import { POST as giftsPublicPost } from "./api/gifts/public/route";
+
 export const apiRouter = Router();
 
 // 1. Authentication routes
@@ -44,4 +47,7 @@ apiRouter.post("/api/auth/verify-otp", makeExpressHandler(verifyOtpPost));
 
 // 2. User routes
 apiRouter.get("/api/users/me/account-details", makeExpressHandler(accountDetailsGet));
+
+// 3. Gift routes
+apiRouter.post("/api/gifts/public", makeExpressHandler(giftsPublicPost));
 
