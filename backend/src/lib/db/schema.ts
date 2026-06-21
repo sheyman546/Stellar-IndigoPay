@@ -9,7 +9,6 @@ import {
   pgTable,
   text,
   timestamp,
-  timestamptz,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -270,10 +269,10 @@ export const webhookRetryQueue = pgTable("WebhookRetryQueue", {
   payload: jsonb("payload").notNull(),
   retryCount: integer("retry_count").default(0).notNull(),
   maxRetries: integer("max_retries").default(5).notNull(),
-  nextAttemptAt: timestamptz("next_attempt_at").notNull(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
   lastError: text("last_error"),
-  createdAt: timestamptz("created_at").defaultNow().notNull(),
-  updatedAt: timestamptz("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
