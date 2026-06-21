@@ -3,6 +3,8 @@ import { makeExpressHandler } from "./adapter";
 
 // Auth
 import { POST as authPost } from "./api/auth/route";
+// Dashboard
+import { GET as dashboardStatsGet } from "./api/dashboard/stats/route";
 import { POST as forgotPasswordPost } from "./api/auth/forgot-password/route";
 import { POST as loginPost } from "./api/auth/login/route";
 import { POST as logoutPost } from "./api/auth/logout/route";
@@ -18,9 +20,6 @@ import { POST as sendPhoneOtpPost } from "./api/auth/send-phone-otp/route";
 import { POST as sendVerificationPost } from "./api/auth/send-verification/route";
 import { POST as verifyEmailPost } from "./api/auth/verify-email/route";
 import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
-
-// Gifts
-import { POST as publicGiftPost } from "./api/gifts/public/route";
 
 export const apiRouter = Router();
 
@@ -42,6 +41,6 @@ apiRouter.post("/api/auth/send-verification", makeExpressHandler(sendVerificatio
 apiRouter.post("/api/auth/verify-email", makeExpressHandler(verifyEmailPost));
 apiRouter.post("/api/auth/verify-otp", makeExpressHandler(verifyOtpPost));
 
-// 2. Gift routes
-apiRouter.post("/api/gifts/public", makeExpressHandler(publicGiftPost));
+// 2. Dashboard routes
+apiRouter.get("/api/dashboard/stats", makeExpressHandler(dashboardStatsGet));
 
