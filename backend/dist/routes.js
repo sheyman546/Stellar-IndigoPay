@@ -20,6 +20,8 @@ const route_13 = require("./api/auth/send-phone-otp/route");
 const route_14 = require("./api/auth/send-verification/route");
 const route_15 = require("./api/auth/verify-email/route");
 const route_16 = require("./api/auth/verify-otp/route");
+// Gifts
+const route_17 = require("./api/gifts/public/upload-avatar/route");
 exports.apiRouter = (0, express_1.Router)();
 // 1. Authentication routes
 exports.apiRouter.post("/api/auth", (0, adapter_1.makeExpressHandler)(route_1.POST));
@@ -38,3 +40,5 @@ exports.apiRouter.post("/api/auth/send-phone-otp", (0, adapter_1.makeExpressHand
 exports.apiRouter.post("/api/auth/send-verification", (0, adapter_1.makeExpressHandler)(route_14.POST));
 exports.apiRouter.post("/api/auth/verify-email", (0, adapter_1.makeExpressHandler)(route_15.POST));
 exports.apiRouter.post("/api/auth/verify-otp", (0, adapter_1.makeExpressHandler)(route_16.POST));
+// 2. Gifts routes
+exports.apiRouter.post("/api/gifts/public/upload-avatar", route_17.upload.single("avatar"), route_17.uploadAvatarHandler);
