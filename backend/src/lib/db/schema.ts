@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   pgEnum,
@@ -143,4 +144,46 @@ export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
     fields: [refreshTokens.userId],
     references: [users.id],
   }),
+}));
+
+// Transaction enums
+export const transactionStatusEnum = pgEnum("transaction_status", [
+  "pending",
+  "completed",
+  "failed",
+]);
+
+export const transactionTypeEnum = pgEnum("transaction_type", [
+  "deposit",
+  "withdrawal",
+  "transfer",
+]);
+
+// Transactions table
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    walletId: uuid("wallet_id"),
+    type: transactionTypeEnum("type").notNull(),
+    status: transactionStatusEnum("status").default("pending").notNull(),
+    amount: doublePrecision("amount").notNull(),
+    currency: text("currency").notNull(),
+    reference: text("reference"),
+    provider: text("provider"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => {
+    return [
+      index("tx_user_id_idx").on(table.userId),
+      index("tx_wallet_id_idx").on(table.walletId),
+      index("tx_created_at_idx").on(table.createdAt),
+    ];
+  }
+);
+
+export const transactionsRelations = relations(transactions, ({ many, one }) => ({
+  user: one(users, { fields: [transactions.userId], references: [users.id] }),
 }));

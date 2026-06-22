@@ -21,6 +21,7 @@ import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
 
 // Users
 import { GET as accountDetailsGet } from "./api/users/me/account-details/route";
+import { GET as transactionsGet } from "./api/transactions/route";
 
 export const apiRouter = Router();
 
