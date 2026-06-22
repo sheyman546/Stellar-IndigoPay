@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { makeExpressHandler } from "./adapter";
 
+// Users
+import { GET as usersResolveGet } from "./api/users/resolve/route";
+
 // Auth
 import { POST as authPost } from "./api/auth/route";
 import { POST as forgotPasswordPost } from "./api/auth/forgot-password/route";
@@ -29,7 +32,10 @@ import { POST as giftsPublicPost } from "./api/gifts/public/route";
 
 export const apiRouter = Router();
 
-// 1. Authentication routes
+// 1. Users routes
+apiRouter.get("/api/users/resolve", makeExpressHandler(usersResolveGet));
+
+// 2. Authentication routes
 apiRouter.post("/api/auth", makeExpressHandler(authPost));
 apiRouter.post("/api/auth/forgot-password", makeExpressHandler(forgotPasswordPost));
 apiRouter.post("/api/auth/login", makeExpressHandler(loginPost));
