@@ -1,19 +1,14 @@
 import cron from 'node-cron';
-import { db } from '../../lib/db'; 
-import { gifts, wallets, transactionHistory, notifications } from '../../lib/schema'; 
+import { db } from '../lib/db'; 
+import { gifts, wallets, transaction, notifications } from '../lib/db/schema'; 
 import { eq, and, lte, sql } from 'drizzle-orm';
 
-// Execution lock guard to prevent overlapping ticks
 let isProcessing = false;
 
-/**
- * Scheduled Cron Job: Runs every minute to unlock and process mature gifts.
- */
 export const startGiftReleaseJob = () => {
   cron.schedule('*/1 * * * *', async () => {
-    // If the previous execution block is still busy, skip this iteration safely
     if (isProcessing) {
-      console.warn('[Cron Job] Previous gift release batch is still running. Skipping tick.');
+      console.warn('[Cron Job] Previous execution is still active. Skipping tick.');
       return;
     }
 
@@ -23,7 +18,7 @@ export const startGiftReleaseJob = () => {
 
       console.log('[Cron Job] Checking for mature time-locked gifts...');
 
-      // 1. Fetch all confirmed gifts whose lock time has expired
+      // 1. Find all potential candidate records that passed their unlock window
       const matureGifts = await db
         .select()
         .from(gifts)
@@ -36,64 +31,72 @@ export const startGiftReleaseJob = () => {
 
       if (matureGifts.length === 0) return;
 
-      console.log(`[Cron Job] Found ${matureGifts.length} gifts ready for release.`);
+      console.log(`[Cron Job] Evaluating ${matureGifts.length} potential records...`);
 
-      // 2. Process each gift sequentially in isolated database transactions
-      for (const gift of matureGifts) {
+      for (const candidateGift of matureGifts) {
         try {
           await db.transaction(async (tx) => {
             
-            // A. Credit the recipient's wallet balance atomically in the DB
-            // This prevents JavaScript float rounding bugs and uses the DB's native precision
+            // 2. Lock the specific gift row using a database level lock (SELECT FOR UPDATE)
+            // This prevents other server instances from picking it up concurrently.
+            const [lockedGift] = await tx
+              .select()
+              .from(gifts)
+              .where(eq(gifts.id, candidateGift.id))
+              .for('update');
+
+            // 3. Defensive Check: Ensure another worker thread did not process this record already
+            if (!lockedGift || lockedGift.status !== 'confirmed') {
+              console.log(`[Cron Job] Gift ${candidateGift.id} already modified by another instance. Skipping.`);
+              return;
+            }
+
+            // 4. Safely credit the recipient's wallet balance
             const updatedWallets = await tx
               .update(wallets)
               .set({ 
-                balance: sql`${wallets.balance} + ${gift.amount}`, 
+                balance: sql`${wallets.balance} + ${lockedGift.amount}`, 
                 updatedAt: new Date() 
               })
-              .where(eq(wallets.userId, gift.recipientId))
-              .returning(); // Returns the updated row to verify existence
+              .where(eq(wallets.userId, lockedGift.recipientId))
+              .returning();
 
             if (updatedWallets.length === 0) {
-              throw new Error(`Wallet not found for recipient user ID: ${gift.recipientId}`);
+              throw new Error(`Wallet not found for user ID: ${lockedGift.recipientId}`);
             }
 
-            // B. Update gift status to completed
+            // 5. Shift state status values safely to completed
             await tx
               .update(gifts)
               .set({ status: 'completed', updatedAt: new Date() })
-              .where(eq(gifts.id, gift.id));
+              .where(eq(gifts.id, lockedGift.id));
 
-            // C. Create transaction history entry
-            await tx.insert(transactionHistory).values({
-              userId: gift.recipientId,
-              amount: gift.amount,
+            // 6. Write history record inside the corrected 'transaction' table structure
+            await tx.insert(transaction).values({
+              userId: lockedGift.recipientId,
+              amount: lockedGift.amount,
               type: 'gift_receive',
               status: 'success',
-              referenceId: gift.id,
-              createdAt: new Date(),
+              referenceId: lockedGift.id,
             });
 
-            // D. Dispatch an in-app notification entry
+            // 7. Insert the in-app notification context
             await tx.insert(notifications).values({
-              userId: gift.recipientId,
+              userId: lockedGift.recipientId,
               title: '🎁 Gift Unlocked!',
-              message: `Your time-locked cash gift of ${gift.amount} USDC has been released to your wallet.`,
+              message: `Your time-locked cash gift of ${lockedGift.amount} USDC has been released to your wallet.`,
               isRead: false,
-              createdAt: new Date(),
             });
-          });
 
-          console.log(`[Cron Job] Successfully released gift ID: ${gift.id}`);
-          
+            console.log(`[Cron Job] Successfully released gift ID: ${lockedGift.id}`);
+          });
         } catch (giftError) {
-          console.error(`[Cron Job] Failed to process gift ID ${gift.id}:`, giftError);
+          console.error(`[Cron Job] Failed to process individual gift target ID ${candidateGift.id}:`, giftError);
         }
       }
     } catch (error) {
-      console.error('[Cron Job] Error executing gift release cron job:', error);
+      console.error('[Cron Job] Error executing gift release batch:', error);
     } finally {
-      // Always release the lock when execution finishes, even if errors occur
       isProcessing = false;
     }
   });
