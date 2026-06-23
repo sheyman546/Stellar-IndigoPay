@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { makeExpressHandler } from "./adapter";
 
+// Users
+import { GET as usersResolveGet } from "./api/users/resolve/route";
+
 // Auth
 import { POST as authPost } from "./api/auth/route";
 import { POST as forgotPasswordPost } from "./api/auth/forgot-password/route";
@@ -19,13 +22,21 @@ import { POST as sendVerificationPost } from "./api/auth/send-verification/route
 import { POST as verifyEmailPost } from "./api/auth/verify-email/route";
 import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
 
+// Gifts
+import { uploadMiddleware, uploadAvatarHandler } from "./api/gifts/public/upload-avatar/route";
 // Users
 import { GET as accountDetailsGet } from "./api/users/me/account-details/route";
 import { GET as transactionsGet } from "./api/transactions/route";
 
+// Gifts
+import { POST as giftsPublicPost } from "./api/gifts/public/route";
+
 export const apiRouter = Router();
 
-// 1. Authentication routes
+// 1. Users routes
+apiRouter.get("/api/users/resolve", makeExpressHandler(usersResolveGet));
+
+// 2. Authentication routes
 apiRouter.post("/api/auth", makeExpressHandler(authPost));
 apiRouter.post("/api/auth/forgot-password", makeExpressHandler(forgotPasswordPost));
 apiRouter.post("/api/auth/login", makeExpressHandler(loginPost));
@@ -43,6 +54,11 @@ apiRouter.post("/api/auth/send-verification", makeExpressHandler(sendVerificatio
 apiRouter.post("/api/auth/verify-email", makeExpressHandler(verifyEmailPost));
 apiRouter.post("/api/auth/verify-otp", makeExpressHandler(verifyOtpPost));
 
+// 2. Gifts routes
+apiRouter.post("/api/gifts/public/upload-avatar", uploadMiddleware, uploadAvatarHandler);
 // 2. User routes
 apiRouter.get("/api/users/me/account-details", makeExpressHandler(accountDetailsGet));
+
+// 3. Gift routes
+apiRouter.post("/api/gifts/public", makeExpressHandler(giftsPublicPost));
 
