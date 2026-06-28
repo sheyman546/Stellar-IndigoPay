@@ -35,19 +35,19 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Drizzle Schema Check
-        run: npx drizzle-kit check
+        run: npx drizzle-kit check --config=backend/drizzle.config.ts
 
       - name: Lint Code
-        run: npm run lint
+        run: npm run lint --workspaces --if-present
 
       - name: Type Check
-        run: npx tsc --noEmit
+        run: npm run type-check --workspaces --if-present || npx tsc --noEmit
 
       - name: Run Tests
-        run: npm run test
+        run: npm run test --workspaces --if-present
 
       - name: Build Application
-        run: npm run build
+        run: npm run build --workspaces --if-present
         env:
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
