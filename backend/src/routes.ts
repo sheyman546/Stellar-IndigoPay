@@ -26,6 +26,7 @@ import { POST as verifyOtpPost } from "./api/auth/verify-otp/route";
 import { uploadMiddleware, uploadAvatarHandler } from "./api/gifts/public/upload-avatar/route";
 // Users
 import { GET as accountDetailsGet } from "./api/users/me/account-details/route";
+import { GET as transactionsGet } from "./api/transactions/route";
 
 // Gifts
 import { POST as giftsPublicPost } from "./api/gifts/public/route";
