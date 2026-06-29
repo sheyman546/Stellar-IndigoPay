@@ -4,6 +4,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -16,16 +17,6 @@ export const userStatusEnum = pgEnum("user_status", [
   "unverified",
   "active",
   "suspended",
-]);
-
-export const giftStatusEnum = pgEnum("gift_status", [
-  "pending_otp",
-  "otp_verified",
-  "pending_review",
-  "confirmed",
-  "completed",
-  "sent",
-  "failed",
 ]);
 
 
@@ -126,52 +117,56 @@ export const refreshTokens = pgTable(
   },
 );
 
+export const giftStatusEnum = pgEnum("gift_status", [
+  "pending_otp",
+  "otp_verified",
+  "pending_review",
+  "confirmed",
+  "completed",
+  "sent",
+  "failed",
+]);
+
 export const gifts = pgTable(
   "gifts",
   {
-    id:                uuid("id").defaultRandom().primaryKey(),
-    senderId:          uuid("sender_id").references(() => users.id),
-    recipientId:       uuid("recipient_id").notNull().references(() => users.id),
-    amount:            doublePrecision("amount").notNull(),
-    fee:               doublePrecision("fee").default(0).notNull(),
-    totalAmount:       doublePrecision("total_amount").notNull(),
-    currency:          text("currency").notNull(),
-    message:           text("message"),
-    template:          text("template"),
-    status:            giftStatusEnum("status").default("pending_otp").notNull(),
-    otpHash:           text("otp_hash"),
-    otpExpiresAt:      timestamp("otp_expires_at"),
-    otpAttempts:       integer("otp_attempts").default(0).notNull(),
-    transactionId:     text("transaction_id"),
-    blockchainTxHash:  text("blockchain_tx_hash"),
-    paymentReference:  text("payment_reference"),
-    paymentProvider:   text("payment_provider"),
+    id: uuid("id").defaultRandom().primaryKey(),
+    senderId: uuid("sender_id").references(() => users.id),
+    recipientId: uuid("recipient_id").notNull().references(() => users.id),
+    amount: doublePrecision("amount").notNull(),
+    fee: doublePrecision("fee").default(0).notNull(),
+    totalAmount: doublePrecision("total_amount").notNull(),
+    currency: text("currency").notNull(),
+    message: text("message"),
+    template: text("template"),
+    status: giftStatusEnum("status").default("pending_otp").notNull(),
+    otpHash: text("otp_hash"),
+    otpExpiresAt: timestamp("otp_expires_at"),
+    otpAttempts: integer("otp_attempts").default(0).notNull(),
+    transactionId: text("transaction_id").unique(),
+    blockchainTxHash: text("blockchain_tx_hash"),
+    paymentReference: text("payment_reference").unique("gift_payment_reference_unique"),
+    paymentProvider: text("payment_provider"),
     paymentVerifiedAt: timestamp("payment_verified_at"),
-    hideAmount:        boolean("hide_amount").default(false).notNull(),
-    hideSender:        boolean("hide_sender").default(false).notNull(),
-    isAnonymous:       boolean("is_anonymous").default(false).notNull(),
-    unlockDatetime:    timestamp("unlock_datetime"),
-    senderName:        text("sender_name"),
-    senderEmail:       text("sender_email"),
-    senderAvatar:      text("sender_avatar"),
-    shareLink:         text("share_link"),
-    shareLinkToken:    text("share_link_token"),
-    slug:              text("slug"),
-    shortCode:         text("short_code"),
-    coverImageId:      text("cover_image_id"),
-    linkExpiresAt:     timestamp("link_expires_at"),
-    completedAt:       timestamp("completed_at"),
-    createdAt:         timestamp("created_at").defaultNow().notNull(),
-    updatedAt:         timestamp("updated_at").defaultNow().notNull(),
-    recipientPhone:    text("recipient_phone"),
+    hideAmount: boolean("hide_amount").default(false).notNull(),
+    hideSender: boolean("hide_sender").default(false).notNull(),
+    isAnonymous: boolean("is_anonymous").default(false).notNull(),
+    unlockDatetime: timestamp("unlock_datetime"),
+    senderName: text("sender_name"),
+    senderEmail: text("sender_email"),
+    senderAvatar: text("sender_avatar"),
+    shareLink: text("share_link").unique(),
+    shareLinkToken: text("share_link_token").unique(),
+    slug: text("slug").unique(),
+    shortCode: text("short_code").unique(),
+    coverImageId: text("cover_image_id"),
+    linkExpiresAt: timestamp("link_expires_at"),
+    completedAt: timestamp("completed_at"),
+    recipientPhone: text("recipient_phone"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
-    unique("gifts_transaction_id_unique").on(table.transactionId),
-    unique("gift_payment_reference_unique").on(table.paymentReference),
-    unique("gifts_share_link_unique").on(table.shareLink),
-    unique("gifts_share_link_token_unique").on(table.shareLinkToken),
-    unique("gifts_slug_unique").on(table.slug),
-    unique("gifts_short_code_unique").on(table.shortCode),
     index("gift_sender_id_idx").on(table.senderId),
     index("gift_recipient_id_idx").on(table.recipientId),
     index("gift_status_idx").on(table.status),
@@ -183,12 +178,113 @@ export const gifts = pgTable(
   ],
 );
 
+export const wallets = pgTable(
+  "wallets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    currency: text("currency").notNull(),
+    balance: doublePrecision("balance").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("wallet_user_currency_key").on(table.userId, table.currency),
+    index("wallet_user_id_idx").on(table.userId),
+  ],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    read: boolean("read").default(false).notNull(),
+    metadata: text("metadata"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("notif_user_id_idx").on(table.userId),
+    index("notif_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const transactionStatusEnum = pgEnum("transaction_status", [
+  "pending",
+  "completed",
+  "failed",
+]);
+
+export const transactionTypeEnum = pgEnum("transaction_type", [
+  "deposit",
+  "withdrawal",
+  "transfer",
+]);
+
+export const bankAccounts = pgTable(
+  "bank_accounts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    country: text("country").notNull(),
+    currency: text("currency").notNull(),
+    swiftBic: text("swift_bic").notNull(),
+    accountNumber: text("account_number").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("bank_accounts_user_id_idx").on(table.userId),
+  ],
+);
+
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    walletId: uuid("wallet_id").references(() => wallets.id),
+    type: transactionTypeEnum("type").notNull(),
+    status: transactionStatusEnum("status").default("pending").notNull(),
+    amount: doublePrecision("amount").notNull(),
+    currency: text("currency").notNull(),
+    reference: text("reference"),
+    provider: text("provider"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tx_user_id_idx").on(table.userId),
+    index("tx_wallet_id_idx").on(table.walletId),
+    index("tx_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const webhookRetryQueue = pgTable("WebhookRetryQueue", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").notNull(),
+  retryCount: integer("retry_count").default(0).notNull(),
+  maxRetries: integer("max_retries").default(5).notNull(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   emailVerifications: many(emailVerifications),
   passwordResets: many(passwordResets),
   refreshTokens: many(refreshTokens),
-  sentGifts: many(gifts, { relationName: "giftSender" }),
-  receivedGifts: many(gifts, { relationName: "giftRecipient" }),
+  wallets: many(wallets),
+  notifications: many(notifications),
+  sentGifts: many(gifts, { relationName: "sentGifts" }),
+  receivedGifts: many(gifts, { relationName: "receivedGifts" }),
+  bankAccounts: many(bankAccounts),
+  transactions: many(transactions),
 }));
 
 export const emailVerificationsRelations = relations(
@@ -219,11 +315,29 @@ export const giftsRelations = relations(gifts, ({ one }) => ({
   sender: one(users, {
     fields: [gifts.senderId],
     references: [users.id],
-    relationName: "giftSender",
+    relationName: "sentGifts",
   }),
   recipient: one(users, {
     fields: [gifts.recipientId],
     references: [users.id],
-    relationName: "giftRecipient",
+    relationName: "receivedGifts",
   }),
+}));
+
+export const walletsRelations = relations(wallets, ({ one, many }) => ({
+  user: one(users, { fields: [wallets.userId], references: [users.id] }),
+  transactions: many(transactions),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const bankAccountsRelations = relations(bankAccounts, ({ one }) => ({
+  user: one(users, { fields: [bankAccounts.userId], references: [users.id] }),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  user: one(users, { fields: [transactions.userId], references: [users.id] }),
+  wallet: one(wallets, { fields: [transactions.walletId], references: [wallets.id] }),
 }));
