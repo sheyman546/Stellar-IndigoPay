@@ -92,7 +92,7 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
       const getCounterColor = () => {
         if (charCount >= 96) return "text-red-500";
         if (charCount >= 80) return "text-amber-500";
-        return "text-green-600";
+        return "text-[#4F46E5]";
       };
 
   const handleDonate = async () => {
@@ -202,19 +202,21 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
   if (step === "success" && txHash) {
     return (
       <div className="card text-center animate-slide-up">
-        <div className="text-4xl mb-3">🌱</div>
-        <h3 className="font-display text-xl font-semibold text-forest-900 mb-2">Thank you!</h3>
-        <p className="text-[#5a7a5a] dark:text-[#8aaa8a] text-sm mb-4 font-body">
-          Your donation of <span className="font-semibold text-forest-700">{currency === "XLM" ? formatXLM(amountNum) : `${amountNum.toFixed(2)} ${currency}`}</span> has been sent to <span className="font-semibold">{project.name}</span>.
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg">
+          🌱
+        </div>
+        <h3 className="font-display text-xl font-semibold text-[#0F172A] dark:text-[#E2E8F0] mb-2">Thank you!</h3>
+        <p className="text-[#475569] dark:text-[#94A3B8] text-sm mb-4 font-body">
+          Your donation of <span className="font-semibold text-[#4F46E5] dark:text-[#818CF8]">{currency === "XLM" ? formatXLM(amountNum) : `${amountNum.toFixed(2)} ${currency}`}</span> has been sent to <span className="font-semibold">{project.name}</span>.
         </p>
         {donorBadge && (
-          <div className="mb-4 p-3 bg-forest-50 border border-forest-200 rounded-xl">
-            <p className="text-sm font-semibold text-forest-900 mb-1">🎉 Congrats! You earned a new badge!</p>
-            <p className="text-lg font-bold text-forest-700">{donorBadge}</p>
+          <div className="mb-4 p-4 bg-[rgba(99,102,241,0.06)] border border-[rgba(99,102,241,0.12)] rounded-xl">
+            <p className="text-sm font-semibold text-[#0F172A] dark:text-[#E2E8F0] mb-1">🎉 Congrats! You earned a new badge!</p>
+            <p className="text-lg font-bold text-gradient">{donorBadge}</p>
           </div>
         )}
         <a href={explorerUrl(txHash)} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-forest-600 hover:text-forest-700 transition-colors font-body">
+          className="inline-flex items-center gap-1 text-sm text-[#4F46E5] dark:text-[#818CF8] hover:text-[#6366F1] transition-colors font-body font-medium">
           View on Stellar Expert ↗
         </a>
       </div>
@@ -222,8 +224,8 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
   }
   return (
     <div className="card animate-fade-in">
-      <h3 className="font-display text-lg font-semibold text-forest-900 mb-1">Make a Donation</h3>
-          <p className="text-[#5a7a5a] dark:text-[#8aaa8a] text-sm mb-5 font-body">100% goes directly to the project wallet.</p>
+      <h3 className="font-display text-lg font-semibold text-[#0F172A] dark:text-[#E2E8F0] mb-1">Make a Donation</h3>
+          <p className="text-[#475569] dark:text-[#94A3B8] text-sm mb-5 font-body">100% goes directly to the project wallet.</p>
 
       <div className="space-y-4">
         {/* Currency selector */}
@@ -231,11 +233,11 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
           <label className="label">Currency</label>
           <div className="flex gap-2">
             <button onClick={() => setCurrency("XLM")}
-              className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all font-body ${currency === "XLM" ? "bg-forest-500 text-white" : "bg-white"}`}>
+              className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all font-body ${currency === "XLM" ? "btn-primary text-white border-0" : "bg-white dark:bg-[#14142D] border-[rgba(99,102,241,0.15)] dark:border-[rgba(129,140,248,0.20)] text-[#475569] dark:text-[#94A3B8]"}`}>
               XLM
             </button>
             <button onClick={() => setCurrency("USDC")}
-              className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all font-body ${currency === "USDC" ? "bg-forest-500 text-white" : "bg-white"}`}>
+              className={`px-3 py-2 rounded-xl text-sm font-medium border transition-all font-body ${currency === "USDC" ? "btn-primary text-white border-0" : "bg-white dark:bg-[#14142D] border-[rgba(99,102,241,0.15)] dark:border-[rgba(129,140,248,0.20)] text-[#475569] dark:text-[#94A3B8]"}`}>
               USDC
             </button>
           </div>
@@ -248,8 +250,8 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
               <button key={p} onClick={() => setAmount(p)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all font-body ${
                   amount === p
-                    ? "bg-forest-500 text-white border-forest-500"
-                    : "bg-forest-50 text-forest-700 border-forest-200 hover:border-forest-400"
+                    ? "btn-primary text-white border-0"
+                    : "bg-[rgba(99,102,241,0.06)] dark:bg-[rgba(129,140,248,0.08)] text-[#4F46E5] dark:text-[#818CF8] border-[rgba(99,102,241,0.15)] dark:border-[rgba(129,140,248,0.20)] hover:border-[rgba(99,102,241,0.30)]"
                 }`}>
                 {p} {currency}
               </button>
@@ -258,16 +260,16 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
           <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
             placeholder="Or enter custom amount..." min="1" step="1"
             className="input-field" />
-          {amount && !isValid && <p className="mt-1 text-xs text-red-500">Minimum donation is 1 {currency}</p>}
+          {amount && !isValid && <p className="mt-1 text-xs text-[#E11D48]">Minimum donation is 1 {currency}</p>}
           
           {/* CO₂ Impact Calculator */}
           {currency === "XLM" && amount && !isNaN(amountNum) && co2Impact > 0 && (
-            <div className="mt-3 p-3 bg-forest-50 border border-forest-200 rounded-xl">
-              <p className="text-sm font-medium text-forest-900 mb-1">
-                🌱 Your donation will offset approximately <span className="font-bold text-forest-700">{formatCO2(co2Impact)}</span>
+            <div className="mt-3 p-4 bg-[rgba(99,102,241,0.04)] dark:bg-[rgba(129,140,248,0.06)] border border-[rgba(99,102,241,0.10)] dark:border-[rgba(129,140,248,0.12)] rounded-xl">
+              <p className="text-sm font-medium text-[#0F172A] dark:text-[#E2E8F0] mb-1">
+                🌱 Your donation will offset approximately <span className="font-bold text-[#4F46E5] dark:text-[#818CF8]">{formatCO2(co2Impact)}</span>
               </p>
               {treeEquivalent > 0 && (
-                <p className="text-xs text-forest-600 mt-1">
+                <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-1">
                   That is equivalent to planting about <span className="font-semibold">{treeEquivalent} {treeEquivalent === 1 ? 'tree' : 'trees'}</span>
                 </p>
               )}
@@ -277,14 +279,14 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
 
         {/* Message */}
         <div>
-          <label className="label">Message <span className="normal-case text-[#8aaa8a] dark:text-forest-300 font-normal">(optional)</span></label>
+          <label className="label">Message <span className="normal-case text-[#64748B] dark:text-[#94A3B8] font-normal">(optional)</span></label>
           <input type="text" value={message} onChange={(e) => setMessage(e.target.value)}
             placeholder="Leave a message of support..." maxLength={100}
             className="input-field" />
         </div>
 
         {/*  Helper text */}
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-1">
             Your message will appear in the public donation feed
           </p>
 
@@ -322,7 +324,7 @@ export default function DonateForm({ project, publicKey, initialAmount, initialM
         </button>
 
         {step === "signing" && (
-          <p className="text-center text-xs text-[#5a7a5a] dark:text-[#8aaa8a] animate-pulse font-body">
+          <p className="text-center text-xs text-[#475569] dark:text-[#94A3B8] animate-pulse font-body">
             Please confirm in your Freighter wallet...
           </p>
         )}

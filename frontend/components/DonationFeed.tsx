@@ -106,11 +106,11 @@ export default function DonationFeed({ projectId, walletAddress, refreshKey = 0,
   if (loading) return (
     <div className="space-y-3">
       {[1, 2, 3].map(i => (
-        <div key={i} className="animate-pulse flex gap-3 p-3 rounded-xl bg-forest-50">
-          <div className="w-8 h-8 rounded-full bg-forest-200 flex-shrink-0" />
+        <div key={i} className="animate-pulse flex gap-3 p-3 rounded-xl bg-[rgba(99,102,241,0.04)] dark:bg-[rgba(129,140,248,0.06)]">
+          <div className="w-8 h-8 rounded-full bg-[rgba(99,102,241,0.10)] dark:bg-[rgba(129,140,248,0.12)] flex-shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-3 bg-forest-200 rounded w-1/2" />
-            <div className="h-2 bg-forest-100 rounded w-1/3" />
+            <div className="h-3 bg-[rgba(99,102,241,0.10)] dark:bg-[rgba(129,140,248,0.12)] rounded w-1/2" />
+            <div className="h-2 bg-[rgba(99,102,241,0.06)] dark:bg-[rgba(129,140,248,0.08)] rounded w-1/3" />
           </div>
         </div>
       ))}
@@ -120,19 +120,19 @@ export default function DonationFeed({ projectId, walletAddress, refreshKey = 0,
   if (donations.length === 0) return (
     <div>
       {walletAddress && (
-        <div className="flex items-center gap-2 mb-3 text-xs text-forest-500 font-body">
+        <div className="flex items-center gap-2 mb-3 text-xs text-[#4F46E5] dark:text-[#818CF8] font-body">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           Listening for live donations…
         </div>
       )}
-      <p className="text-center text-[#5a7a5a] dark:text-[#8aaa8a] text-sm py-6 font-body">No donations yet — be the first! 🌱</p>
+      <p className="text-center text-[#475569] dark:text-[#94A3B8] text-sm py-6 font-body">No donations yet — be the first! 🌱</p>
     </div>
   );
 
   return (
     <div className="space-y-2">
       {walletAddress && (
-        <div className="flex items-center gap-2 mb-1 text-xs text-forest-500 font-body">
+        <div className="flex items-center gap-2 mb-1 text-xs text-[#4F46E5] dark:text-[#818CF8] font-body">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           Live — new donations appear automatically
         </div>
@@ -140,19 +140,19 @@ export default function DonationFeed({ projectId, walletAddress, refreshKey = 0,
       {donations.map((d) => (
         <div
           key={d.id}
-          className={`flex items-start gap-3 p-3 rounded-xl bg-forest-50 hover:bg-forest-100 transition-all duration-500 ${
+          className={`flex items-start gap-3 p-3 rounded-xl bg-[rgba(99,102,241,0.04)] dark:bg-[rgba(129,140,248,0.06)] hover:bg-[rgba(99,102,241,0.08)] dark:hover:bg-[rgba(129,140,248,0.10)] transition-all duration-500 ${
             newIds.has(d.id)
               ? "animate-slide-in ring-2 ring-emerald-400/50 bg-emerald-50"
               : ""
           }`}
         >
-          <div className="w-9 h-9 rounded-full bg-forest-200 flex items-center justify-center flex-shrink-0 text-base">
+          <div className="w-9 h-9 rounded-full bg-[rgba(99,102,241,0.10)] dark:bg-[rgba(129,140,248,0.12)] flex items-center justify-center flex-shrink-0 text-base">
             {newIds.has(d.id) ? "✨" : "🌱"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-forest-900 text-sm font-body">{shortenAddress(d.donorAddress, 5)}</span>
-              <span className="font-mono font-bold text-forest-600 text-sm">
+              <span className="font-semibold text-[#0F172A] dark:text-[#E2E8F0] text-sm font-body">{shortenAddress(d.donorAddress, 5)}</span>
+              <span className="font-mono font-bold text-[#4F46E5] dark:text-[#818CF8] text-sm">
                 {d.currency === "USDC" ? `$${parseFloat(d.amount || "0").toFixed(2)} USDC` : formatXLM(d.amountXLM || d.amount || "0")}
               </span>
               {d.isMatched && (
@@ -166,11 +166,11 @@ export default function DonationFeed({ projectId, walletAddress, refreshKey = 0,
                 </span>
               )}
             </div>
-            {d.message && <p className="text-xs text-[#5a7a5a] dark:text-[#8aaa8a] mt-0.5 italic font-body">&quot;{d.message}&quot;</p>}
+            {d.message && <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5 italic font-body">&quot;{d.message}&quot;</p>}
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-[#8aaa8a] dark:text-forest-300 font-body">{timeAgo(d.createdAt)}</span>
+              <span className="text-xs text-[#64748B] dark:text-[#94A3B8] font-body">{timeAgo(d.createdAt)}</span>
               <a href={explorerUrl(d.transactionHash)} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-forest-500 hover:text-forest-700 transition-colors font-body">
+                className="text-xs text-[#4F46E5] dark:text-[#818CF8] hover:text-[#6366F1] transition-colors font-body">
                 View tx ↗
               </a>
             </div>
@@ -181,7 +181,7 @@ export default function DonationFeed({ projectId, walletAddress, refreshKey = 0,
         <button
           onClick={handleLoadMore}
           disabled={loadingMore}
-          className="w-full mt-4 px-4 py-2 bg-forest-100 hover:bg-forest-200 text-forest-700 rounded-lg transition-colors font-body text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mt-4 px-4 py-2 bg-[rgba(99,102,241,0.08)] dark:bg-[rgba(129,140,248,0.10)] hover:bg-[rgba(99,102,241,0.15)] dark:hover:bg-[rgba(129,140,248,0.18)] text-[#4F46E5] dark:text-[#818CF8] rounded-lg transition-colors font-body text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loadingMore ? "Loading..." : "Load more donations"}
         </button>

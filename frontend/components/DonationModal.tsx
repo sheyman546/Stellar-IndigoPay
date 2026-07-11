@@ -123,7 +123,7 @@ export default function DonationModal({
           ref={closeButtonRef}
           onClick={onClose}
           aria-label="Close donation dialog"
-          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-forest-100 text-forest-700 hover:bg-forest-200 transition-colors"
+          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-[rgba(99,102,241,0.08)] dark:bg-[rgba(129,140,248,0.10)] text-[#4F46E5] dark:text-[#818CF8] hover:bg-[rgba(99,102,241,0.15)] dark:hover:bg-[rgba(129,140,248,0.20)] transition-colors"
         >
           ✕
         </button>
