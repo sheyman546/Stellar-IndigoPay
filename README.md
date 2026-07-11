@@ -1,14 +1,14 @@
 <div align="center">
 
-# 🌱 Stellar IndigoPay
+# ✦ Stellar-IndigoPay
 
-### Donate directly to verified climate projects. Every transaction on-chain. Zero platform fees.
+### Fund the planet. One XLM at a time.
 
-[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
-[![Stellar](https://img.shields.io/badge/Powered%20by-Stellar-08D5A1?logo=stellar)](https://stellar.org)
-[![Soroban](https://img.shields.io/badge/Built%20on-Soroban-7B61FF)](https://soroban.stellar.org)
+[![MIT License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-6366F1.svg)](CONTRIBUTING.md)
+[![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-818CF8.svg)](CODE_OF_CONDUCT.md)
+[![Stellar](https://img.shields.io/badge/Powered%20by-Stellar-6366F1?logo=stellar)](https://stellar.org)
+[![Soroban](https://img.shields.io/badge/Built%20on-Soroban-7C3AED)](https://soroban.stellar.org)
 [![Node 20](https://img.shields.io/badge/Node-20%20LTS-339933?logo=node.js)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript)](https://www.typescriptlang.org)
 
@@ -18,9 +18,9 @@
 
 ---
 
-## ✨ What is Stellar IndigoPay?
+## ✨ What is Stellar-IndigoPay?
 
-Stellar IndigoPay is an **open-source climate donation platform** built on the Stellar network. Donors give XLM directly to verified environmental projects — funds never touch a custodian. Every donation is recorded on-chain via a [Soroban](https://soroban.stellar.org) smart contract, so total impact, donor reputation, and CO₂ offsets are **publicly auditable** by anyone, in any language, on any device.
+Stellar-IndigoPay is an **open-source climate donation platform** built on the Stellar network. Donors give XLM directly to verified environmental projects — funds never touch a custodian. Every donation is recorded on-chain via a [Soroban](https://soroban.stellar.org) smart contract, so total impact, donor reputation, and CO₂ offsets are **publicly auditable** by anyone, in any language, on any device.
 
 The same platform ships as:
 
@@ -34,7 +34,7 @@ The same platform ships as:
 
 ---
 
-## 🎯 Why IndigoPay?
+## 🎯 Why Stellar-IndigoPay?
 
 - 🔐 **Custody-minimised** — XLM goes directly from donor wallet to project wallet. The platform never holds funds.
 - 📜 **On-chain transparency** — Soroban is the single source of truth. Anyone can read `get_project()`, `get_donor_stats()`, `get_global_total()` without trusting us.

@@ -1,6 +1,6 @@
-# Stellar IndigoPay — Documentation Index
+# ✦ Stellar-IndigoPay — Documentation Index
 
-Welcome to the Stellar IndigoPay documentation. This index is the landing page
+Welcome to the Stellar-IndigoPay documentation. This index is the landing page
 for everything in this directory. Pick the section that matches what you need.
 
 > **Just want to try the app?** Jump to **[Getting Started](getting-started.md)**
