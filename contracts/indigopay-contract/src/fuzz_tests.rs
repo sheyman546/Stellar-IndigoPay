@@ -13,12 +13,11 @@
 mod fuzz {
     extern crate std;
 
+    use crate::{DataKey, IndigoPayContract, IndigoPayContractClient, MockOracle, Project};
     use proptest::prelude::*;
     use soroban_sdk::{
-        testutils::Address as _,
-        token::StellarAssetClient, Address, Env, String as SorobanString,
+        testutils::Address as _, token::StellarAssetClient, Address, Env, String as SorobanString,
     };
-    use crate::{DataKey, IndigoPayContract, IndigoPayContractClient, MockOracle, Project};
 
     /// Upper bound for a single donation: 1 billion XLM in stroops (10^16).
     /// Chosen so that a single donation is large but a few thousand back-to-back
@@ -37,7 +36,9 @@ mod fuzz {
     /// `MockOracle` returns a fixed rate of 8 XLM per 1 USDC stroop) and a
     /// USDC Stellar asset, then binds them to the contract via
     /// `set_oracle` / `set_usdc_token`.
-    fn setup_usdc(co2_per_xlm: u32) -> (
+    fn setup_usdc(
+        co2_per_xlm: u32,
+    ) -> (
         Env,
         IndigoPayContractClient<'static>,
         SorobanString,
@@ -63,11 +64,12 @@ mod fuzz {
         );
 
         let token_admin = Address::generate(&env);
-        let usdc_token = env.register_stellar_asset_contract_v2(token_admin).address();
+        let usdc_token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
         client.set_usdc_token(&admin, &usdc_token);
 
-        let oracle_id = env.register_contract(None, MockOracle);
-        let oracle_addr = oracle_id.address();
+        let oracle_addr = env.register_contract(None, MockOracle);
         client.set_oracle(&admin, &oracle_addr);
 
         (env, client, project_id, usdc_token)
@@ -78,7 +80,14 @@ mod fuzz {
         StellarAssetClient::new(env, usdc_token).mint(donor, &amount);
     }
 
-    fn setup() -> (Env, Address, IndigoPayContractClient<'static>, Address, SorobanString, Address) {
+    fn setup() -> (
+        Env,
+        Address,
+        IndigoPayContractClient<'static>,
+        Address,
+        SorobanString,
+        Address,
+    ) {
         let env = Env::default();
         env.mock_all_auths();
 
@@ -90,21 +99,38 @@ mod fuzz {
 
         let project_id = SorobanString::from_str(&env, "proj-fuzz-1");
         let wallet = Address::generate(&env);
-        client.register_project(&admin, &project_id, &SorobanString::from_str(&env, "Fuzz Project"), &wallet, &100u32);
+        client.register_project(
+            &admin,
+            &project_id,
+            &SorobanString::from_str(&env, "Fuzz Project"),
+            &wallet,
+            &100u32,
+        );
 
         let token_admin = Address::generate(&env);
-        let token = env.register_stellar_asset_contract_v2(token_admin).address();
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
 
         (env, contract_id, client, wallet, project_id, token)
     }
 
-    fn set_project_total_raised(env: &Env, contract_id: &Address, project_id: &SorobanString, amount: i128) {
+    fn set_project_total_raised(
+        env: &Env,
+        contract_id: &Address,
+        project_id: &SorobanString,
+        amount: i128,
+    ) {
         env.as_contract(contract_id, || {
-            let mut project: Project = env.storage().instance()
+            let mut project: Project = env
+                .storage()
+                .instance()
                 .get(&DataKey::Project(project_id.clone()))
                 .expect("project should exist");
             project.total_raised = amount;
-            env.storage().instance().set(&DataKey::Project(project_id.clone()), &project);
+            env.storage()
+                .instance()
+                .set(&DataKey::Project(project_id.clone()), &project);
         });
     }
 

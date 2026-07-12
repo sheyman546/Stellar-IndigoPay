@@ -18,7 +18,7 @@ pub enum JobStatus {
 #[derive(Clone, Debug)]
 pub struct Milestone {
     pub name: String,
-    pub percentage: u32,  // 0-100
+    pub percentage: u32, // 0-100
     pub released: bool,
 }
 
@@ -78,7 +78,8 @@ impl EscrowContract {
         // Validate milestones sum to 100%
         let mut total_percentage: u32 = 0;
         for milestone in milestones.iter() {
-            total_percentage = total_percentage.checked_add(milestone.percentage)
+            total_percentage = total_percentage
+                .checked_add(milestone.percentage)
                 .expect("Milestone percentage overflow");
         }
         if total_percentage != 100 {
@@ -147,7 +148,9 @@ impl EscrowContract {
                 m.released = true;
             }
             if m.released {
-                released_count = released_count.checked_add(1).expect("released_count overflow");
+                released_count = released_count
+                    .checked_add(1)
+                    .expect("released_count overflow");
             }
             updated_milestones.set(i, m);
         }
@@ -168,8 +171,11 @@ impl EscrowContract {
     /// Admin-only: Mark a job as disputed, freezing remaining releases.
     pub fn dispute_job(env: Env, admin: Address, job_id: String) {
         admin.require_auth();
-        let stored_admin: Address = env.storage().instance()
-            .get(&DataKey::Admin).expect("Not initialized");
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
         if stored_admin != admin {
             panic!("Only admin can dispute jobs");
         }
@@ -187,8 +193,11 @@ impl EscrowContract {
     /// Admin-only: Resolve a dispute and release remaining funds.
     pub fn resolve_dispute(env: Env, admin: Address, job_id: String, approve_remaining: bool) {
         admin.require_auth();
-        let stored_admin: Address = env.storage().instance()
-            .get(&DataKey::Admin).expect("Not initialized");
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
         if stored_admin != admin {
             panic!("Only admin can resolve disputes");
         }
@@ -209,9 +218,9 @@ impl EscrowContract {
         for milestone in job.milestones.iter() {
             if !milestone.released {
                 let proportion = milestone.percentage as i128;
-                remaining_amount = remaining_amount.checked_add(
-                    (job.amount * proportion) / 100i128
-                ).expect("remaining_amount overflow");
+                remaining_amount = remaining_amount
+                    .checked_add((job.amount * proportion) / 100i128)
+                    .expect("remaining_amount overflow");
             }
         }
 
@@ -219,7 +228,9 @@ impl EscrowContract {
         //    movement (CEI ordering).
         job.status = JobStatus::Completed;
         job.disputed = false;
-        env.storage().instance().set(&DataKey::Job(job_id.clone()), &job);
+        env.storage()
+            .instance()
+            .set(&DataKey::Job(job_id.clone()), &job);
 
         // ── Interaction: external token transfer last.
         if remaining_amount > 0 {
@@ -237,7 +248,11 @@ impl EscrowContract {
     /// Freelancer can claim a milestone after release_after ledgers if not disputed.
     pub fn claim_milestone(env: Env, freelancer: Address, job_id: String, milestone_index: u32) {
         freelancer.require_auth();
-        let mut job: Job = env.storage().instance().get(&DataKey::Job(job_id.clone())).expect("Job not found");
+        let mut job: Job = env
+            .storage()
+            .instance()
+            .get(&DataKey::Job(job_id.clone()))
+            .expect("Job not found");
 
         if job.disputed {
             panic!("Job is disputed; cannot claim milestone");
@@ -264,7 +279,11 @@ impl EscrowContract {
         updated_milestones.set(milestone_index, m);
         job.milestones = updated_milestones;
         let all_released = job.milestones.iter().all(|m| m.released);
-        job.status = if all_released { JobStatus::Completed } else { JobStatus::PartiallyReleased };
+        job.status = if all_released {
+            JobStatus::Completed
+        } else {
+            JobStatus::PartiallyReleased
+        };
         env.storage().instance().set(&DataKey::Job(job_id), &job);
 
         // ── Interaction: external token transfer last.
@@ -281,7 +300,8 @@ impl EscrowContract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::testutils::{Address as _, Ledger};
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::token::StellarAssetClient;
     use soroban_sdk::{Address, Env, String, Vec};
 
     fn setup(env: &Env) -> (Address, EscrowContractClient) {
@@ -300,7 +320,11 @@ mod tests {
 
         let client_addr = Address::generate(&env);
         let freelancer = Address::generate(&env);
-        let token = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&client_addr, &1000i128);
         let job_id = String::from_str(&env, "job-1");
 
         // Create 3 milestones: 50%, 30%, 20%
@@ -321,7 +345,14 @@ mod tests {
             released: false,
         });
 
-        client.create_job(&client_addr, &freelancer, &job_id, &token, &1000i128, &milestones);
+        client.create_job(
+            &client_addr,
+            &freelancer,
+            &job_id,
+            &token,
+            &1000i128,
+            &milestones,
+        );
 
         let job = client.get_job(&job_id).expect("Job should exist");
         assert_eq!(job.status, JobStatus::Escrowed);
@@ -353,7 +384,14 @@ mod tests {
         });
         // Only 90%, should panic
 
-        client.create_job(&client_addr, &freelancer, &job_id, &token, &1000i128, &milestones);
+        client.create_job(
+            &client_addr,
+            &freelancer,
+            &job_id,
+            &token,
+            &1000i128,
+            &milestones,
+        );
     }
 
     #[test]
@@ -374,7 +412,11 @@ mod tests {
 
         let client_addr = Address::generate(&env);
         let freelancer = Address::generate(&env);
-        let token = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&client_addr, &1000i128);
         let job_id = String::from_str(&env, "job-dispute");
 
         let mut milestones = Vec::new(&env);
@@ -384,7 +426,14 @@ mod tests {
             released: false,
         });
 
-        client.create_job(&client_addr, &freelancer, &job_id, &token, &1000i128, &milestones);
+        client.create_job(
+            &client_addr,
+            &freelancer,
+            &job_id,
+            &token,
+            &1000i128,
+            &milestones,
+        );
 
         // Dispute the job
         client.dispute_job(&admin, &job_id);
