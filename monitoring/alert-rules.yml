@@ -68,3 +68,14 @@ groups:
           severity: page
         annotations:
           summary: "Backend readiness has been failing for 3m"
+
+      - alert: QueueDepthHigh
+        expr: sum by (queue) (queue_failed{job="stellar-indigopay-backend"}) > 100
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Queue failed jobs count is high (>100) for 10m on {{ $labels.queue }}"
+          description: |
+            There are more than 100 failed jobs in queue '{{ $labels.queue }}' for the last 10 minutes.
+            Check the worker logs.
