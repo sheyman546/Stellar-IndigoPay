@@ -855,3 +855,59 @@ export async function uploadSupportingDocument(
   );
   return data.data;
 }
+
+// ── Admin: Queue Monitoring & Actions ──────────────────────────────
+export interface QueueMetric {
+  queue: string;
+  active: number;
+  waiting: number;
+  failed: number;
+  completed: number;
+  depth: number;
+  failure_rate: number;
+  latency: number;
+  paused: boolean;
+}
+
+export async function fetchQueues(adminKey: string): Promise<QueueMetric[]> {
+  const { data } = await api.get<{ success: boolean; data: QueueMetric[] }>(
+    "/api/admin/queues",
+    {
+      headers: { "X-Admin-Key": adminKey },
+    },
+  );
+  return data.data;
+}
+
+export async function pauseQueue(name: string, adminKey: string): Promise<boolean> {
+  const { data } = await api.post<{ success: boolean }>(
+    `/api/admin/queues/${name}/pause`,
+    {},
+    {
+      headers: { "X-Admin-Key": adminKey },
+    },
+  );
+  return data.success;
+}
+
+export async function resumeQueue(name: string, adminKey: string): Promise<boolean> {
+  const { data } = await api.post<{ success: boolean }>(
+    `/api/admin/queues/${name}/resume`,
+    {},
+    {
+      headers: { "X-Admin-Key": adminKey },
+    },
+  );
+  return data.success;
+}
+
+export async function purgeQueue(name: string, adminKey: string): Promise<boolean> {
+  const { data } = await api.post<{ success: boolean }>(
+    `/api/admin/queues/${name}/purge`,
+    {},
+    {
+      headers: { "X-Admin-Key": adminKey },
+    },
+  );
+  return data.success;
+}
