@@ -18,6 +18,7 @@ interface AdminLayoutProps {
 
 const NAV_LINKS = [
   { href: "/admin/verification", label: "Verification Queue" },
+  { href: "/admin/co2-flags", label: "CO₂ Flags" },
   { href: "/admin", label: "Projects" },
 ];
 
