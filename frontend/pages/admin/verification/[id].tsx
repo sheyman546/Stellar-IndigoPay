@@ -13,6 +13,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import {
   STATUS_LABELS,
@@ -209,12 +210,12 @@ export default function VerificationDetailPage() {
               The verification request you're looking for may have been removed
               or you may not have access to it.
             </p>
-            <a
+            <Link
               href="/admin/verification"
               className="btn-primary text-sm inline-flex"
             >
               ← Back to Queue
-            </a>
+            </Link>
           </div>
         </AdminLayout>
       </>
@@ -235,12 +236,12 @@ export default function VerificationDetailPage() {
       <AdminLayout>
         {/* Breadcrumb */}
         <div className="mb-6">
-          <a
+          <Link
             href="/admin/verification"
             className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)] font-body transition-colors inline-flex items-center gap-1"
           >
             ← Back to Queue
-          </a>
+          </Link>
         </div>
 
         {/* Header card */}

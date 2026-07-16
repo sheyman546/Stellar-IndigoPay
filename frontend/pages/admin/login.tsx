@@ -12,6 +12,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import Link from "next/link";
 import { adminLogin } from "@/lib/adminAuth";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -41,7 +42,7 @@ export default function AdminLoginPage() {
       router.replace("/admin/verification");
     } catch (err: unknown) {
       const msg =
-        err instanceof Error
+        err instanceof Error && err.message.length > 0
           ? err.message
           : "Login failed. Please check your credentials.";
       setError(msg);
@@ -158,12 +159,12 @@ export default function AdminLoginPage() {
 
           {/* Back to home link */}
           <div className="text-center mt-6">
-            <a
+            <Link
               href="/"
               className="text-sm text-[var(--text-secondary)] hover:text-[var(--primary)] font-body transition-colors"
             >
               ← Back to home
-            </a>
+            </Link>
           </div>
         </div>
       </div>
