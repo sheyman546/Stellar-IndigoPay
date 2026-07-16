@@ -178,10 +178,9 @@ if (process.env.NODE_ENV !== "production") {
   }
 }
 
-// ── Admin event service routes ──────────────────────────────────────────────
-// Mounted BEFORE the main admin router so that /api/admin/events/* paths
-// are matched by this more-specific router instead of being intercepted
-// by the catch-all in the generic admin router.
+// Admin event service routes — mounted BEFORE the main admin router so that
+// /api/admin/* paths for specific sub-routers are matched before the generic
+// admin catch-all.
 try {
   const adminEventsRouter = require("./routes/admin/events");
   app.use("/api/admin/events", adminEventsRouter);
@@ -190,6 +189,17 @@ try {
   logger.error(
     { event: "route_load_failed", route: "admin/events", err: err.message },
     "Failed to load admin events route module",
+  );
+}
+
+try {
+  const adminAnalyticsRouter = require("./routes/admin/analytics");
+  app.use("/api/admin/analytics", adminAnalyticsRouter);
+  app.use("/api/v1/admin/analytics", adminAnalyticsRouter);
+} catch (err) {
+  logger.error(
+    { event: "route_load_failed", route: "admin/analytics", err: err.message },
+    "Failed to load admin analytics route module",
   );
 }
 
