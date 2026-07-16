@@ -27,6 +27,7 @@ const { Contract, TransactionBuilder } = require("@stellar/stellar-sdk");
 const redis = require("../services/redis");
 const { adminRequired } = require("../middleware/auth");
 const { sanitizedStringField } = require("../middleware/validation");
+const { invalidateProjectRelatedCache, clearAllCaches } = require("../services/cacheManager");
 
 const PROJECTS_LIST_CACHE_TTL = 60; // seconds
 const PROJECTS_LIST_CACHE_PREFIX = "projects:list:";
@@ -349,7 +350,7 @@ router.post("/", async (req, res, next) => {
       ],
     );
 
-    await redis.deletePattern(PROJECTS_LIST_CACHE_PREFIX + "*");
+    await invalidateProjectRelatedCache(id);
     res
       .status(201)
       .json({ success: true, data: mapProjectRow(result.rows[0]) });
@@ -1206,10 +1207,7 @@ router.patch("/:id/status", async (req, res, next) => {
       ipAddress: req.ip,
     });
 
-    if (typeof redis.deletePattern === "function")
-      await redis.deletePattern(PROJECTS_LIST_CACHE_PREFIX + "*");
-    if (typeof redis.deletePattern === "function")
-      await redis.deletePattern("stats:*");
+    await invalidateProjectRelatedCache(req.params.id);
 
     res.json({ success: true, data: mapProjectRow(result.rows[0]) });
   } catch (e) {

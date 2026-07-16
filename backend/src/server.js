@@ -44,6 +44,7 @@ const logger = require("./logger");
 const requestLogger = require("./middleware/requestLogger");
 const requestId = require("./middleware/requestId");
 const metricsMiddleware = require("./middleware/metrics");
+const cacheMiddleware = require("./middleware/cache");
 const {
   createCorsMiddleware,
   getAllowedOrigins,
@@ -157,6 +158,7 @@ app.use(
 
 // Per-request HTTP metrics (BEFORE routes so it captures the full request).
 app.use(metricsMiddleware);
+app.use(cacheMiddleware);
 
 // ── Swagger UI (development only) ───────────────────────────────────────────
 if (process.env.NODE_ENV !== "production") {

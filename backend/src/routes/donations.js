@@ -12,6 +12,7 @@ const { createRateLimiter } = require("../middleware/rateLimiter");
 const { mapDonationRow } = require("../services/store");
 const { enqueueProfileUpdate } = require("../services/profileQueue");
 const { server } = require("../services/stellar");
+const { invalidateProjectRelatedCache } = require("../services/cacheManager");
 const donationLimiter = createRateLimiter(10, 1); // 10 requests per minute
 
 // Local EventEmitter used by both the POST /api/donations handler and the
@@ -235,6 +236,8 @@ async function recordDonation(req, res, next) {
         timestamp: new Date().toISOString(),
       });
     }
+
+    await invalidateProjectRelatedCache(projectId);
 
     const mappedDonation = mapDonationRow(donationResult.rows[0]);
     donationEvents.emit("new_donation", mappedDonation);

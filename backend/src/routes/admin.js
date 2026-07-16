@@ -4,6 +4,7 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { signToken, adminRequired } = require("../middleware/auth");
 const { createRateLimiter } = require("../middleware/rateLimiter");
+const { clearAllCaches, invalidatePatterns } = require("../services/cacheManager");
 
 const loginLimiter = createRateLimiter(10, 15);
 
@@ -150,6 +151,21 @@ router.get("/audit-log", adminRequired, async (req, res, next) => {
       page: parseInt(page),
       pageSize: limit,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/cache/clear", adminRequired, async (req, res, next) => {
+  try {
+    const { patterns } = req.body || {};
+    if (Array.isArray(patterns) && patterns.length > 0) {
+      await invalidatePatterns(patterns);
+      return res.json({ success: true, cleared: patterns.length });
+    }
+
+    await clearAllCaches();
+    res.json({ success: true, cleared: "all" });
   } catch (e) {
     next(e);
   }
