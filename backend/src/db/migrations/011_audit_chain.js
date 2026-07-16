@@ -18,10 +18,10 @@ module.exports = {
 
   async up(client) {
     await client.query(
-      `ALTER TABLE admin_audit_log ADD COLUMN IF NOT EXISTS prev_hash TEXT`,
+      "ALTER TABLE admin_audit_log ADD COLUMN IF NOT EXISTS prev_hash TEXT",
     );
     await client.query(
-      `ALTER TABLE admin_audit_log ADD COLUMN IF NOT EXISTS row_hash TEXT`,
+      "ALTER TABLE admin_audit_log ADD COLUMN IF NOT EXISTS row_hash TEXT",
     );
 
     // Backfill row_hash for any pre-existing rows so verifyChain can validate
@@ -81,10 +81,10 @@ module.exports = {
 
   async down(client) {
     await client.query(
-      `ALTER TABLE admin_audit_log DROP COLUMN IF NOT EXISTS row_hash`,
+      "ALTER TABLE admin_audit_log DROP COLUMN IF NOT EXISTS row_hash",
     );
     await client.query(
-      `ALTER TABLE admin_audit_log DROP COLUMN IF NOT EXISTS prev_hash`,
+      "ALTER TABLE admin_audit_log DROP COLUMN IF NOT EXISTS prev_hash",
     );
   },
 };

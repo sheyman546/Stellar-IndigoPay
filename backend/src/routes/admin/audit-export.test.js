@@ -17,7 +17,7 @@ const mockRows = [
     action: "login",
     target_type: null,
     target_id: null,
-    metadata: '{"k":"v"}',
+    metadata: "{\"k\":\"v\"}",
     ip_address: "127.0.0.1",
     created_at: "2026-07-16T00:00:00.000Z",
   },

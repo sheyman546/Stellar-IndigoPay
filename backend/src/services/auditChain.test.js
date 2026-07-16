@@ -72,7 +72,7 @@ describe("auditChain.computeRowHash", () => {
 
   it("stringifies object metadata", () => {
     const asObj = computeRowHash({ id: "1", actor: "a", action: "b", metadata: { x: 1 }, prev_hash: GENESIS_PREV_HASH });
-    const asStr = computeRowHash({ id: "1", actor: "a", action: "b", metadata: '{"x":1}', prev_hash: GENESIS_PREV_HASH });
+    const asStr = computeRowHash({ id: "1", actor: "a", action: "b", metadata: "{\"x\":1}", prev_hash: GENESIS_PREV_HASH });
     expect(asObj).toBe(asStr);
   });
 });
