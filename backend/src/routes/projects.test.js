@@ -183,6 +183,97 @@ describe("GET /api/projects", () => {
     expect(query).toContain("ILIKE");
   });
 
+  test("ranks by relevance via ts_rank when searching without a cursor", async () => {
+    pool.query.mockResolvedValue({ rows: [MOCK_PROJECT_ROW] });
+
+    await request(app).get("/api/projects?search=amazon").expect(200);
+
+    const [query, params] = pool.query.mock.calls[0];
+    expect(query).toContain("search_vector @@ plainto_tsquery");
+    expect(query).toContain("ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC");
+    expect(params[0]).toBe("amazon");
+  });
+
+  test("falls back to created_at ordering when searching with a cursor", async () => {
+    pool.query.mockResolvedValue({ rows: [MOCK_PROJECT_ROW] });
+    const cursor = Buffer.from(
+      JSON.stringify({ created_at: new Date().toISOString(), id: "proj-1" }),
+    ).toString("base64");
+
+    await request(app)
+      .get(`/api/projects?search=amazon&cursor=${cursor}`)
+      .expect(200);
+
+    const query = pool.query.mock.calls[0][0];
+    expect(query).not.toContain("ts_rank");
+    expect(query).toContain("ORDER BY created_at DESC, id DESC");
+  });
+
+  test("filters by location", async () => {
+    pool.query.mockResolvedValue({ rows: [MOCK_PROJECT_ROW] });
+
+    await request(app).get("/api/projects?location=Brazil").expect(200);
+
+    const [query, params] = pool.query.mock.calls[0];
+    expect(query).toContain("location ILIKE");
+    expect(params).toContain("%Brazil%");
+  });
+
+  test("filters by co2Min and co2Max", async () => {
+    pool.query.mockResolvedValue({ rows: [MOCK_PROJECT_ROW] });
+
+    await request(app)
+      .get("/api/projects?co2Min=1000&co2Max=100000")
+      .expect(200);
+
+    const [query, params] = pool.query.mock.calls[0];
+    expect(query).toContain("co2_offset_kg >= $1");
+    expect(query).toContain("co2_offset_kg <= $2");
+    expect(params).toEqual(expect.arrayContaining([1000, 100000]));
+  });
+
+  test("ignores a non-numeric co2Min/co2Max", async () => {
+    pool.query.mockResolvedValue({ rows: [MOCK_PROJECT_ROW] });
+
+    await request(app).get("/api/projects?co2Min=abc").expect(200);
+
+    const query = pool.query.mock.calls[0][0];
+    expect(query).not.toContain("co2_offset_kg");
+  });
+
+  test("returns facet counts scoped to active filters when facets=true", async () => {
+    pool.query
+      .mockResolvedValueOnce({
+        rows: [{ value: "Reforestation", count: 12 }],
+      }) // category facets
+      .mockResolvedValueOnce({ rows: [{ value: "Brazil", count: 5 }] }) // location facets
+      .mockResolvedValueOnce({ rows: [{ value: "active", count: 45 }] }) // status facets
+      .mockResolvedValueOnce({ rows: [MOCK_PROJECT_ROW] }); // main list query
+
+    const res = await request(app)
+      .get("/api/projects?category=Reforestation&facets=true")
+      .expect(200);
+
+    expect(res.body.facets).toEqual({
+      category: [{ value: "Reforestation", count: 12 }],
+      location: [{ value: "Brazil", count: 5 }],
+      status: [{ value: "active", count: 45 }],
+    });
+
+    // Facet queries run before the main query and share the same filters.
+    const categoryFacetQuery = pool.query.mock.calls[0][0];
+    expect(categoryFacetQuery).toContain("GROUP BY category");
+    expect(categoryFacetQuery).toContain("category = $1");
+  });
+
+  test("omits facets from the response when facets is not requested", async () => {
+    pool.query.mockResolvedValue({ rows: [MOCK_PROJECT_ROW] });
+
+    const res = await request(app).get("/api/projects").expect(200);
+
+    expect(res.body.facets).toBeUndefined();
+  });
+
   test("rejects invalid cursor", async () => {
     await request(app).get("/api/projects?cursor=invalid").expect(400);
   });

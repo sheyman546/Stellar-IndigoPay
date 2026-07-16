@@ -228,6 +228,10 @@ router.get("/", async (req, res, next) => {
       status,
       verified,
       search,
+      location,
+      co2Min,
+      co2Max,
+      facets,
       limit = 20,
       cursor,
     } = req.query;
@@ -240,6 +244,10 @@ router.get("/", async (req, res, next) => {
         status,
         verified,
         search,
+        location,
+        co2Min,
+        co2Max,
+        facets,
         limit: pageSize,
         cursor: cursor || null,
       });
@@ -262,18 +270,83 @@ router.get("/", async (req, res, next) => {
     if (verified === "true") {
       where.push("verified = true");
     }
+
+    // Full-text search: `search_vector` (see migration 013_project_search) is
+    // matched via plainto_tsquery for relevance-ranked results, OR'd with the
+    // original ILIKE substring match so short fragments/typos that don't form
+    // a valid tsquery term still surface results.
+    let searchTsqueryIdx = null;
     if (search && typeof search === "string") {
+      values.push(search);
+      searchTsqueryIdx = values.length;
       values.push(`%${search}%`);
+      const ilikeIdx = values.length;
       where.push(`(
-        name ILIKE $${values.length}
-        OR description ILIKE $${values.length}
-        OR location ILIKE $${values.length}
+        search_vector @@ plainto_tsquery('english', $${searchTsqueryIdx})
+        OR name ILIKE $${ilikeIdx}
+        OR description ILIKE $${ilikeIdx}
+        OR location ILIKE $${ilikeIdx}
         OR EXISTS (
           SELECT 1
           FROM unnest(tags) AS tag
-          WHERE tag ILIKE $${values.length}
+          WHERE tag ILIKE $${ilikeIdx}
         )
       )`);
+    }
+
+    if (location && typeof location === "string") {
+      values.push(`%${location}%`);
+      where.push(`location ILIKE $${values.length}`);
+    }
+
+    if (co2Min !== undefined) {
+      const min = Number.parseInt(co2Min, 10);
+      if (Number.isFinite(min)) {
+        values.push(min);
+        where.push(`co2_offset_kg >= $${values.length}`);
+      }
+    }
+    if (co2Max !== undefined) {
+      const max = Number.parseInt(co2Max, 10);
+      if (Number.isFinite(max)) {
+        values.push(max);
+        where.push(`co2_offset_kg <= $${values.length}`);
+      }
+    }
+
+    // Facet counts reflect every filter above (category/status/verified/
+    // search/location/co2 range) but not pagination, so they're computed
+    // from a snapshot of `values`/`where` before the cursor clause (which is
+    // pagination-only) is appended below.
+    let facetsPayload;
+    if (facets === "true") {
+      const facetValues = [...values];
+      const facetWhereSql = where.length ? "WHERE " + where.join(" AND ") : "";
+      const [categoryFacets, locationFacets, statusFacets] = await Promise.all([
+        pool.query(
+          `SELECT category AS value, COUNT(*)::int AS count
+             FROM projects ${facetWhereSql}
+            GROUP BY category ORDER BY count DESC`,
+          facetValues,
+        ),
+        pool.query(
+          `SELECT location AS value, COUNT(*)::int AS count
+             FROM projects ${facetWhereSql}
+            GROUP BY location ORDER BY count DESC LIMIT 20`,
+          facetValues,
+        ),
+        pool.query(
+          `SELECT status AS value, COUNT(*)::int AS count
+             FROM projects ${facetWhereSql}
+            GROUP BY status ORDER BY count DESC`,
+          facetValues,
+        ),
+      ]);
+      facetsPayload = {
+        category: categoryFacets.rows,
+        location: locationFacets.rows,
+        status: statusFacets.rows,
+      };
     }
 
     if (cursor) {
@@ -302,7 +375,14 @@ router.get("/", async (req, res, next) => {
     if (where.length) {
       query += "WHERE " + where.join(" AND ") + " ";
     }
-    query += `ORDER BY created_at DESC, id DESC LIMIT $${limitIdx}`;
+    // Rank by relevance when searching (only safe to reorder by rank when
+    // there's no keyset cursor in play, since keyset pagination requires a
+    // stable ORDER BY matching the cursor's inequality).
+    if (searchTsqueryIdx && !cursor) {
+      query += `ORDER BY ts_rank(search_vector, plainto_tsquery('english', $${searchTsqueryIdx})) DESC, created_at DESC, id DESC LIMIT $${limitIdx}`;
+    } else {
+      query += `ORDER BY created_at DESC, id DESC LIMIT $${limitIdx}`;
+    }
 
     // All user-controlled values (status, category, search, cursor fields) are
     // passed as parameterised $N placeholders in `values`. Dynamic WHERE clauses
@@ -326,6 +406,7 @@ router.get("/", async (req, res, next) => {
       data,
       next_cursor: nextCursor,
       has_more: hasMore,
+      ...(facetsPayload ? { facets: facetsPayload } : {}),
     };
     await redis.set(cacheKey, responseBody, PROJECTS_LIST_CACHE_TTL);
 

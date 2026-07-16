@@ -118,18 +118,54 @@ export async function csrfFetch(input: RequestInfo, init: RequestInit = {}) {
  * const projects = await fetchProjects({ verified: true, limit: 12 });
  * console.log("projects:", projects.length);
  */
-export async function fetchProjects(params?: {
+export interface ProjectListFilters {
   category?: string;
   status?: string;
   verified?: boolean;
   search?: string;
+  location?: string;
+  co2Min?: number;
+  co2Max?: number;
   limit?: number;
-}): Promise<ClimateProject[]> {
+}
+
+export async function fetchProjects(
+  params?: ProjectListFilters,
+): Promise<ClimateProject[]> {
   const { data } = await api.get<{ success: boolean; data: ClimateProject[] }>(
     "/api/projects",
     { params },
   );
   return data.data;
+}
+
+export interface ProjectFacetValue {
+  value: string;
+  count: number;
+}
+
+export interface ProjectFacets {
+  category: ProjectFacetValue[];
+  location: ProjectFacetValue[];
+  status: ProjectFacetValue[];
+}
+
+/**
+ * Fetch facet counts (how many projects match each category/location/status
+ * value) scoped to the given filters, for rendering counts like
+ * "Reforestation (12)" next to filter options that aren't active yet.
+ */
+export async function fetchProjectFacets(
+  params?: ProjectListFilters,
+): Promise<ProjectFacets> {
+  const { data } = await api.get<{
+    success: boolean;
+    data: ClimateProject[];
+    facets?: ProjectFacets;
+  }>("/api/projects", {
+    params: { ...params, facets: true, limit: 1 },
+  });
+  return data.facets || { category: [], location: [], status: [] };
 }
 
 /**
