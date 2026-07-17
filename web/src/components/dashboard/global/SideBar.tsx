@@ -27,9 +27,12 @@ interface NavItem {
 const mainMenuItems: NavItem[] = [
   { name: "Dashboard", href: "/dashboard/sender", icon: DashboardIcon },
   { name: "Gifts", href: "/dashboard/gifts", icon: GiftIcon, badge: 5 },
+  { name: "Wallet", href: "/dashboard/wallet", icon: WalletIcon },
 ];
 
 const generalMenuItems: NavItem[] = [
+  { name: "Profile", href: "/profile", icon: ProfileIcon },
+  { name: "Settings", href: "/settings", icon: SettingsIcon },
   { name: "Help Desk", href: "/help", icon: HelpIcon },
 ];
 
@@ -76,6 +79,7 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuthContext();
+  const [darkMode, setDarkMode] = useState(false);
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
 
   useEffect(() => {
@@ -176,9 +180,39 @@ export const SideBar = ({ isOpen, onClose }: SideBarProps) => {
           General
         </p>
         <nav className="flex flex-col gap-2">
-          {generalMenuItems.map((item) =>
-            renderNavLink(item, { compact: true, applyAriaCurrent }),
-          )}
+          {generalMenuItems
+            .slice(0, 1)
+            .map((item) =>
+              renderNavLink(item, { compact: true, applyAriaCurrent }),
+            )}
+
+          <div className="flex items-center justify-between px-4 py-3 text-gray-600">
+            <div className="flex items-center gap-3">
+              <MoonIcon />
+              <span className="text-sm font-medium">Dark Mode</span>
+            </div>
+            <div
+              role="switch"
+              aria-checked={darkMode}
+              tabIndex={0}
+              onClick={() => setDarkMode(!darkMode)}
+              className={`relative cursor-pointer w-11 h-6 rounded-full transition-colors shrink-0 ${
+                darkMode ? "bg-[#5A42DE]" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  darkMode ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </div>
+          </div>
+
+          {generalMenuItems
+            .slice(1)
+            .map((item) =>
+              renderNavLink(item, { compact: true, applyAriaCurrent }),
+            )}
         </nav>
       </div>
 

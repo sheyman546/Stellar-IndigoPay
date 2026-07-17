@@ -15,39 +15,41 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install Dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Get Next.js Cache
         uses: actions/cache@v4
         with:
           path: |
-            ~/.npm
             ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
       - name: Drizzle Schema Check
-        run: npx drizzle-kit check --config=backend/drizzle.config.ts
+        run: pnpm dlx drizzle-kit check --config=backend/drizzle.config.ts
 
       - name: Lint Code
-        run: npm run lint --workspaces --if-present
+        run: pnpm run lint -r --if-present
 
       - name: Type Check
-        run: npm run type-check --workspaces --if-present || npx tsc --noEmit
+        run: pnpm run type-check -r --if-present || pnpm dlx tsc --noEmit
 
       - name: Run Tests
-        run: npm run test --workspaces --if-present
+        run: pnpm run test -r --if-present
 
       - name: Build Application
-        run: npm run build --workspaces --if-present
+        run: pnpm run build -r --if-present
         env:
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
