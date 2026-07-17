@@ -61,6 +61,7 @@ const {
 } = require("./services/webhookQueue");
 const { start: startPushQueue } = require("./services/pushQueue");
 const { start: startIdempotencyCleanup } = require("./services/idempotencyCleanup");
+const { start: startBlacklistCleanup } = require("./services/blacklistCleanup");
 const { startIndexer } = require("./services/indexerService");
 const { startReconciler, stopReconciler } = require("./services/indexerReconciler");
 const { startDLQWorker, stopDLQWorker } = require("./services/indexerDLQWorker");
@@ -139,6 +140,15 @@ const csrfProtection = csurf({
   },
   ignoreMethods: ["GET", "HEAD", "OPTIONS"],
 });
+// Endpoints whose only credential is the refresh cookie. SameSite=Strict keeps
+// that cookie off every cross-site request, so a CSRF token would cost the
+// admin client a round-trip without closing an attack path. Listed per mount
+// because this router answers on both /api and /api/v1.
+const COOKIE_AUTH_PATHS = ["/admin/refresh", "/admin/logout"].flatMap((path) => [
+  `/api${path}`,
+  `/api/v1${path}`,
+]);
+
 app.use((req, res, next) => {
   // Push-notification endpoints accept cross-origin POSTs from device tokens
   // (mobile apps don't have a CSRF session), so CSRF is skipped there.
@@ -150,6 +160,9 @@ app.use((req, res, next) => {
     req.path.startsWith("/api/notifications") ||
     req.path.startsWith("/api/v1/notifications")
   ) {
+    return next();
+  }
+  if (COOKIE_AUTH_PATHS.includes(req.path)) {
     return next();
   }
   return csrfProtection(req, res, next);
@@ -397,6 +410,7 @@ async function startServer() {
   await startWebhookQueue();
   await startPushQueue();
   await startIdempotencyCleanup();
+  await startBlacklistCleanup();
 
   // digestQueue is optional in some deployments
   try {
@@ -471,6 +485,7 @@ async function startServer() {
     "./services/webhookQueue",
     "./services/pushQueue",
     "./services/idempotencyCleanup",
+    "./services/blacklistCleanup",
   ]) {
     lifecycle.onShutdown(async () => {
       try {
