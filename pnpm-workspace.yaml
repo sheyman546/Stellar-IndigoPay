@@ -5,7 +5,7 @@ packages:
 minimumReleaseAgeExclude:
   - "electron-to-chromium"
 
-onlyBuiltDependencies:
-  - "esbuild"
-  - "sharp"
-  - "unrs-resolver"
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
