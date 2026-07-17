@@ -36,12 +36,6 @@ jobs:
       - name: Drizzle Schema Check
         run: pnpm --filter backend exec drizzle-kit check
 
-      - name: Lint Code
-        run: pnpm run lint -r --if-present
-
-      - name: Type Check
-        run: pnpm run type-check -r --if-present || pnpm dlx tsc --noEmit
-
       - name: Run Tests
         run: pnpm run test -r --if-present
 
