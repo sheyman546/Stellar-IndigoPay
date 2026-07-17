@@ -37,7 +37,7 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
       - name: Drizzle Schema Check
-        run: pnpm dlx drizzle-kit check --config=backend/drizzle.config.ts
+        run: pnpm --filter backend exec drizzle-kit check
 
       - name: Lint Code
         run: pnpm run lint -r --if-present
