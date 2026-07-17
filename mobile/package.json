@@ -9,6 +9,9 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "expo-clipboard": "~6.0.0",
+    "react-native-qrcode-svg": "^6.3.0",
+    "react-native-svg": "^15.3.0",
     "@react-native-async-storage/async-storage": "^1.23.0",
     "@react-native-community/netinfo": "^11.3.0",
     "@react-navigation/native": "^6.1.9",
@@ -34,6 +37,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@types/jest": "^29.5.12",
+    "@types/react": "~18.2.0",
+    "typescript": "~5.3.3",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^12.9.0",
     "babel-plugin-jest-hoist": "^29.6.3",
