@@ -93,11 +93,15 @@ export default function AdminAuditPage() {
     }
   }, []);
 
-  // Initial data load
+  // Initial data load — fetch logs on filter/page change
   useEffect(() => {
     fetchLogs();
+  }, [fetchLogs]);
+
+  // Fetch distinct actions only once on mount (stats don't change per filter)
+  useEffect(() => {
     fetchDistinctActions();
-  }, [fetchLogs, fetchDistinctActions]);
+  }, [fetchDistinctActions]);
 
   // Debounced filter changes reset page to 1
   const handleFilterChange = useCallback(
