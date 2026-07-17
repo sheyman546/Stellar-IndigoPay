@@ -21,12 +21,5 @@
   },
   "dependencies": {
     "node-cron": "^4.5.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "unrs-resolver"
-    ]
   }
 }
