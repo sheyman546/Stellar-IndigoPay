@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n";
 import { PriceProvider } from "@/lib/priceContext";
 import { WalletProvider } from "@/lib/WalletProvider";
+import InstallPrompt from "@/components/InstallPrompt";
 import { ErrorBoundary } from "@/lib/ErrorBoundary";
 import "@/styles/globals.css";
 
@@ -37,6 +38,7 @@ export default function App({ Component, pageProps }: AppProps) {
                 />
               </Head>
               <SkipToContent />
+              <InstallPrompt />
               <main id="main-content" tabIndex={-1}>
                 <Component {...pageProps} />
               </main>
