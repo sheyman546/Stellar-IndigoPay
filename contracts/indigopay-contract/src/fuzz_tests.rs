@@ -584,36 +584,7 @@ mod fuzz {
 
 
 
-        #[test]
-        fn prop_fuzz_badge_weighted_voting(
-            amount in 10i128 * STROOP..=10_000i128 * STROOP,
-        ) {
-            let (env, admin, client, project_id) = setup_with_admin();
-            client.create_proposal(&admin, &project_id, &720u32);
 
-            let token_admin = Address::generate(&env);
-            let token = env
-                .register_stellar_asset_contract_v2(token_admin)
-                .address();
-
-            let donor = Address::generate(&env);
-            mint_tokens(&env, &token, &donor, amount);
-            client.donate(&token, &donor, &project_id, &amount, &42u32);
-
-            let stats = client.get_donor_stats(&donor);
-            let expected_weight = match stats.badge {
-                BadgeTier::Seedling => 1u32,
-                BadgeTier::Tree => 3u32,
-                BadgeTier::Forest => 10u32,
-                BadgeTier::EarthGuardian => 25u32,
-                BadgeTier::None => 0u32,
-            };
-
-            client.vote_verify_project(&donor, &project_id, &true);
-
-            let proposal = client.get_proposal(&project_id);
-            prop_assert_eq!(proposal.votes_for, expected_weight);
-        }
 
         // ═══════════════════════════════════════════════════════════════════
         // INVARIANT 16: deactivate_all_projects flips ALL projects to inactive
@@ -722,6 +693,41 @@ mod fuzz {
 
             let result = client.try_donate_usdc(&usdc_token, &donor, &project_id, &usdc_amount, &MSG_HASH);
             prop_assert!(result.is_err(), "donate_usdc should panic on CO2 overflow");
+        }
+    } // END of first proptest!
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn prop_fuzz_badge_weighted_voting(
+            amount in 10i128 * STROOP..=10_000i128 * STROOP,
+        ) {
+            let (env, admin, client, project_id) = setup_with_admin();
+            client.create_proposal(&admin, &project_id, &720u32);
+
+            let token_admin = Address::generate(&env);
+            let token = env
+                .register_stellar_asset_contract_v2(token_admin)
+                .address();
+
+            let donor = Address::generate(&env);
+            mint_tokens(&env, &token, &donor, amount);
+            client.donate(&token, &donor, &project_id, &amount, &42u32);
+
+            let stats = client.get_donor_stats(&donor);
+            let expected_weight = match stats.badge {
+                BadgeTier::Seedling => 1u32,
+                BadgeTier::Tree => 3u32,
+                BadgeTier::Forest => 10u32,
+                BadgeTier::EarthGuardian => 25u32,
+                BadgeTier::None => 0u32,
+            };
+
+            client.vote_verify_project(&donor, &project_id, &true);
+
+            let proposal = client.get_proposal(&project_id);
+            prop_assert_eq!(proposal.votes_for, expected_weight);
         }
     } // END of proptest!
 
