@@ -171,6 +171,21 @@ pub struct GlobalStats {
     pub project_count: u32,
 }
 
+/// Record of a pending emergency withdrawal. One per project at a time
+/// (keyed by project_id only — a project holding multiple tokens must
+/// execute withdrawals sequentially, not in parallel).
+/// The `amount` field must not exceed `ProjectContractBalance(project_id, token)`
+/// at execution time — enforced by `execute_emergency_withdrawal`.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct EmergencyWithdrawal {
+    pub new_wallet: Address,
+    pub amount: i128,
+    pub token: Address,
+    pub initiated_at: u32,
+    pub executable_at: u32,
+}
+
 #[contracttype]
 pub enum DataKey {
     // Multi-sig admin set: Vec<Address> of authorized admin addresses.
@@ -247,6 +262,21 @@ pub enum DataKey {
     // returns. Used by indexers to confirm which WASM is currently
     // running at the contract address.
     LastExecutedUpgrade,
+    // Pending emergency withdrawal request. One per project at a time —
+    // key is project_id only; a project with multiple token balances
+    // must execute withdrawals sequentially (initiate → wait → execute
+    // → repeat for next token). Cleared by `execute_emergency_withdrawal`
+    // or `cancel_emergency_withdrawal`.
+    EmergencyWithdrawal(String),
+    // Per-project per-token contract-held balance — the canonical ledger
+    // for how much of each asset each project has deposited into the
+    // contract. Key: (project_id, token_address) → i128.
+    //
+    // MUST be reused by any future contract-held-funds feature (matching
+    // pool, escrow extensions, etc.) rather than introducing a parallel
+    // balance concept. #277's deposit logic must increment this key on
+    // deposit. See SECURITY.md and #277 for coordination notes.
+    ProjectContractBalance(String, Address),
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -277,6 +307,13 @@ const MAX_CO2_PER_XLM: u32 = 100_000;
 // (e.g. by exiting their positions or signalling objections via
 // off-chain channels) before the WASM is swapped.
 const UPGRADE_TIMELOCK_LEDGERS: u32 = 34_560;
+
+// 7 days × 24 h × 3600 s ÷ 5 s per ledger = 120_960 ledgers. The minimum
+// delay between `initiate_emergency_withdrawal` and the earliest ledger at
+// which `execute_emergency_withdrawal` can fire. Gives donors and observers
+// a 7-day window to object off-chain before contract-held funds are sent to
+// the new wallet.
+const EMERGENCY_WITHDRAWAL_TIMELOCK: u32 = 120_960;
 
 /// Read the stored admin set. Panics if not initialized.
 fn read_admin_set(env: &Env) -> Vec<Address> {
@@ -2044,6 +2081,151 @@ impl IndigoPayContract {
     pub fn get_last_executed_upgrade(env: Env) -> Option<BytesN<32>> {
         env.storage().instance().get(&DataKey::LastExecutedUpgrade)
     }
+
+    // ─── Emergency withdrawal (7-day timelock) ─────────────────────────────────
+
+    /// Admin-only: step 1 of the emergency withdrawal flow. Records a
+    /// request to send `amount` of `token` from the contract's
+    /// per-project balance to `new_wallet` after a 7-day timelock.
+    /// One pending withdrawal per project at a time; the caller must
+    /// cancel or execute the existing one before initiating another.
+    ///
+    /// The actual balance check happens at execution time, not here,
+    /// because the 7-day gap means the balance could shift before then
+    /// (TOCTOU avoidance).
+    pub fn initiate_emergency_withdrawal(
+        env: Env,
+        admin: Address,
+        project_id: String,
+        new_wallet: Address,
+        token: Address,
+        amount: i128,
+    ) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+        if amount <= 0 {
+            panic!("Emergency withdrawal amount must be positive");
+        }
+
+        let project: Project = env
+            .storage()
+            .instance()
+            .get(&DataKey::Project(project_id.clone()))
+            .expect("Project not found");
+        if !project.active {
+            panic!("Project is not accepting donations");
+        }
+
+        if env
+            .storage()
+            .instance()
+            .has(&DataKey::EmergencyWithdrawal(project_id.clone()))
+        {
+            panic!("Emergency withdrawal already pending for this project");
+        }
+
+        let current_ledger = env.ledger().sequence();
+        let executable_at = current_ledger
+            .checked_add(EMERGENCY_WITHDRAWAL_TIMELOCK)
+            .expect("Emergency withdrawal timelock overflow");
+
+        let withdrawal = EmergencyWithdrawal {
+            new_wallet: new_wallet.clone(),
+            amount,
+            token: token.clone(),
+            initiated_at: current_ledger,
+            executable_at,
+        };
+        env.storage().instance().set(
+            &DataKey::EmergencyWithdrawal(project_id.clone()),
+            &withdrawal,
+        );
+
+        env.events().publish(
+            (symbol_short!("ew_init"), admin, project_id),
+            (new_wallet, amount, token, executable_at),
+        );
+        ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
+    }
+
+    /// Admin-only: cancel a pending emergency withdrawal before it has
+    /// been executed. Clears the pending entry and emits an event for
+    /// off-chain notification.
+    pub fn cancel_emergency_withdrawal(env: Env, admin: Address, project_id: String) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+
+        if !env
+            .storage()
+            .instance()
+            .has(&DataKey::EmergencyWithdrawal(project_id.clone()))
+        {
+            panic!("No pending emergency withdrawal");
+        }
+
+        env.storage()
+            .instance()
+            .remove(&DataKey::EmergencyWithdrawal(project_id.clone()));
+
+        env.events()
+            .publish((symbol_short!("ew_cncl"), admin, project_id), ());
+        ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
+    }
+
+    /// Permissionless: step 2 of the emergency withdrawal flow. Callable
+    /// by anyone after the 7-day timelock has elapsed. Validates that
+    /// the project's per-project-per-token balance is sufficient, then
+    /// clears the pending entry, decrements the balance, and transfers
+    /// tokens to the new wallet (CEI ordering).
+    pub fn execute_emergency_withdrawal(env: Env, project_id: String) {
+        let withdrawal: EmergencyWithdrawal = env
+            .storage()
+            .instance()
+            .get(&DataKey::EmergencyWithdrawal(project_id.clone()))
+            .expect("No pending emergency withdrawal");
+
+        let current_ledger = env.ledger().sequence();
+        if current_ledger < withdrawal.executable_at {
+            panic!("Emergency withdrawal timelock not yet elapsed");
+        }
+
+        // ── Checks: validate per-project-per-token balance
+        let balance_key =
+            DataKey::ProjectContractBalance(project_id.clone(), withdrawal.token.clone());
+        let balance: i128 = env.storage().instance().get(&balance_key).unwrap_or(0);
+        if withdrawal.amount > balance {
+            panic!("Insufficient contract balance for project");
+        }
+
+        // ── Effects: clear withdrawal AND decrement balance before transfer
+        env.storage()
+            .instance()
+            .remove(&DataKey::EmergencyWithdrawal(project_id.clone()));
+        let new_balance = balance - withdrawal.amount;
+        env.storage().instance().set(&balance_key, &new_balance);
+
+        // ── Interaction: external token transfer
+        let token_client = token::Client::new(&env, &withdrawal.token);
+        token_client.transfer(
+            &env.current_contract_address(),
+            &withdrawal.new_wallet,
+            &withdrawal.amount,
+        );
+
+        env.events().publish(
+            (symbol_short!("ew_exec"), project_id),
+            (withdrawal.new_wallet, withdrawal.amount, withdrawal.token),
+        );
+        ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
+    }
+
+    /// Read-only: returns the pending emergency withdrawal for a project,
+    /// or `None` if no withdrawal is currently pending.
+    pub fn get_emergency_withdrawal(env: Env, project_id: String) -> Option<EmergencyWithdrawal> {
+        env.storage()
+            .instance()
+            .get(&DataKey::EmergencyWithdrawal(project_id))
+    }
 }
 
 // ─── Mock oracle (test / integration use only) ────────────────────────────────
@@ -3583,5 +3765,360 @@ mod tests {
 
         let after_ttl = env.as_contract(&id, || env.storage().instance().get_ttl());
         assert!(after_ttl >= 500_000);
+    }
+
+    // ─── Emergency withdrawal tests ────────────────────────────────────────────
+
+    /// Seed the per-project-per-token contract balance for testing.
+    /// Mirrors what #277's deposit function will do in production.
+    fn seed_project_balance(
+        env: &Env,
+        cid: &soroban_sdk::Address,
+        project_id: &str,
+        token: &Address,
+        amount: i128,
+    ) {
+        env.as_contract(cid, || {
+            env.storage().instance().set(
+                &DataKey::ProjectContractBalance(String::from_str(env, project_id), token.clone()),
+                &amount,
+            );
+        });
+    }
+
+    #[test]
+    fn test_emergency_withdrawal_initiate_happy() {
+        let (env, _cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let amount = 500 * STROOP;
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &amount);
+
+        let w = client.get_emergency_withdrawal(&pid).unwrap();
+        assert_eq!(w.new_wallet, new_wallet);
+        assert_eq!(w.amount, amount);
+        assert_eq!(w.token, token);
+        assert_eq!(w.initiated_at, env.ledger().sequence());
+        assert_eq!(
+            w.executable_at,
+            env.ledger().sequence() + EMERGENCY_WITHDRAWAL_TIMELOCK
+        );
+    }
+
+    #[test]
+    fn test_emergency_withdrawal_execute_after_timelock() {
+        let (env, cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let deposit_amount: i128 = 1000 * STROOP;
+        let withdrawal_amount: i128 = 500 * STROOP;
+
+        // Fund the contract's Stellar token balance
+        StellarAssetClient::new(&env, &token).mint(&cid, &deposit_amount);
+        // Seed the per-project-per-token balance
+        seed_project_balance(&env, &cid, "proj-001", &token, deposit_amount);
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &withdrawal_amount);
+
+        let start = env.ledger().sequence();
+        extend_ttl(&env, &cid);
+        env.ledger()
+            .set_sequence_number(start + EMERGENCY_WITHDRAWAL_TIMELOCK);
+
+        client.execute_emergency_withdrawal(&pid);
+
+        // Verify token arrived at new_wallet
+        let balance = StellarAssetClient::new(&env, &token).balance(&new_wallet);
+        assert_eq!(balance, withdrawal_amount);
+
+        // Verify per-project balance decremented
+        let remaining = env.as_contract(&cid, || {
+            env.storage()
+                .instance()
+                .get::<DataKey, i128>(&DataKey::ProjectContractBalance(pid.clone(), token.clone()))
+        });
+        assert_eq!(remaining.unwrap(), deposit_amount - withdrawal_amount);
+
+        // Verify pending withdrawal cleared
+        assert_eq!(client.get_emergency_withdrawal(&pid), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "Emergency withdrawal timelock not yet elapsed")]
+    fn test_emergency_withdrawal_execute_before_timelock_fails() {
+        let (env, cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let amount = 500 * STROOP;
+
+        StellarAssetClient::new(&env, &token).mint(&cid, &(1000 * STROOP));
+        seed_project_balance(&env, &cid, "proj-001", &token, 1000 * STROOP);
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &amount);
+
+        // Still well before the effective ledger
+        client.execute_emergency_withdrawal(&pid);
+    }
+
+    #[test]
+    fn test_emergency_withdrawal_cancel_happy() {
+        let (env, _cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &(500 * STROOP));
+        assert!(client.get_emergency_withdrawal(&pid).is_some());
+
+        client.cancel_emergency_withdrawal(&admin, &pid);
+        assert_eq!(client.get_emergency_withdrawal(&pid), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "No pending emergency withdrawal")]
+    fn test_emergency_withdrawal_execute_after_cancel_fails() {
+        let (env, cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        StellarAssetClient::new(&env, &token).mint(&cid, &(1000 * STROOP));
+        seed_project_balance(&env, &cid, "proj-001", &token, 1000 * STROOP);
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &(500 * STROOP));
+        client.cancel_emergency_withdrawal(&admin, &pid);
+
+        extend_ttl(&env, &cid);
+        let start = env.ledger().sequence();
+        env.ledger()
+            .set_sequence_number(start + EMERGENCY_WITHDRAWAL_TIMELOCK);
+
+        client.execute_emergency_withdrawal(&pid);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only admin can perform this action")]
+    fn test_emergency_withdrawal_initiate_non_admin_fails() {
+        let (env, cid, client, _admin, pid) = setup();
+        let non_admin = Address::generate(&env);
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        extend_ttl(&env, &cid);
+        client.initiate_emergency_withdrawal(
+            &non_admin,
+            &pid,
+            &new_wallet,
+            &token,
+            &(500 * STROOP),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Project not found")]
+    fn test_emergency_withdrawal_initiate_nonexistent_project_fails() {
+        let (env, _cid, client, admin) = setup_admin_only();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let fake_pid = String::from_str(&env, "nonexistent");
+
+        client.initiate_emergency_withdrawal(
+            &admin,
+            &fake_pid,
+            &new_wallet,
+            &token,
+            &(500 * STROOP),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Emergency withdrawal already pending for this project")]
+    fn test_emergency_withdrawal_double_initiate_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &(500 * STROOP));
+        // Second initiate should fail
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &(300 * STROOP));
+    }
+
+    #[test]
+    #[should_panic(expected = "No pending emergency withdrawal")]
+    fn test_emergency_withdrawal_cancel_without_pending_fails() {
+        let (env, _cid, client, admin) = setup_admin_only();
+        let fake_pid = String::from_str(&env, "no-withdrawal");
+
+        client.cancel_emergency_withdrawal(&admin, &fake_pid);
+    }
+
+    #[test]
+    #[should_panic(expected = "No pending emergency withdrawal")]
+    fn test_emergency_withdrawal_execute_without_pending_fails() {
+        let (env, _cid, client) = {
+            let env = Env::default();
+            env.mock_all_auths();
+            let cid = env.register_contract(None, IndigoPayContract);
+            let client = IndigoPayContractClient::new(&env, &cid);
+            (env, cid, client)
+        };
+        let fake_pid = String::from_str(&env, "no-withdrawal");
+
+        client.execute_emergency_withdrawal(&fake_pid);
+    }
+
+    #[test]
+    fn test_emergency_withdrawal_getter() {
+        let (env, _cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        // No withdrawal initially
+        assert_eq!(client.get_emergency_withdrawal(&pid), None);
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &(500 * STROOP));
+
+        let w = client.get_emergency_withdrawal(&pid).unwrap();
+        assert_eq!(w.amount, 500 * STROOP);
+        assert_eq!(w.token, token);
+        assert_eq!(w.new_wallet, new_wallet);
+
+        // Different project returns None
+        let pid2 = String::from_str(&env, "proj-other");
+        assert_eq!(client.get_emergency_withdrawal(&pid2), None);
+    }
+
+    #[test]
+    fn test_emergency_withdrawal_per_project_isolation() {
+        let (env, _cid, client, admin) = setup_admin_only();
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        // Register two projects
+        let pid_a = String::from_str(&env, "proj-A");
+        let wallet_a = Address::generate(&env);
+        client.register_project(
+            &admin,
+            &pid_a,
+            &String::from_str(&env, "Project A"),
+            &wallet_a,
+            &100u32,
+        );
+        let pid_b = String::from_str(&env, "proj-B");
+        let wallet_b = Address::generate(&env);
+        client.register_project(
+            &admin,
+            &pid_b,
+            &String::from_str(&env, "Project B"),
+            &wallet_b,
+            &100u32,
+        );
+
+        let new_wallet_a = Address::generate(&env);
+        let new_wallet_b = Address::generate(&env);
+
+        // Initiate withdrawal for project A
+        client.initiate_emergency_withdrawal(
+            &admin,
+            &pid_a,
+            &new_wallet_a,
+            &token,
+            &(200 * STROOP),
+        );
+
+        // Project A has a pending withdrawal, B does not
+        assert!(client.get_emergency_withdrawal(&pid_a).is_some());
+        assert_eq!(client.get_emergency_withdrawal(&pid_b), None);
+
+        // Cancel A — B is unaffected
+        client.cancel_emergency_withdrawal(&admin, &pid_a);
+        assert_eq!(client.get_emergency_withdrawal(&pid_a), None);
+
+        // Can now initiate for B
+        client.initiate_emergency_withdrawal(
+            &admin,
+            &pid_b,
+            &new_wallet_b,
+            &token,
+            &(300 * STROOP),
+        );
+        assert!(client.get_emergency_withdrawal(&pid_b).is_some());
+    }
+
+    #[test]
+    #[should_panic(expected = "Insufficient contract balance for project")]
+    fn test_emergency_withdrawal_execute_fails_when_balance_zero_but_contract_funded() {
+        let (env, cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        // Contract has real token balance, but ProjectContractBalance is NOT set
+        StellarAssetClient::new(&env, &token).mint(&cid, &(1000 * STROOP));
+
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &token, &(500 * STROOP));
+
+        extend_ttl(&env, &cid);
+        let start = env.ledger().sequence();
+        env.ledger()
+            .set_sequence_number(start + EMERGENCY_WITHDRAWAL_TIMELOCK);
+
+        client.execute_emergency_withdrawal(&pid);
+    }
+
+    #[test]
+    #[should_panic(expected = "Insufficient contract balance for project")]
+    fn test_emergency_withdrawal_execute_fails_with_wrong_token() {
+        let (env, cid, client, admin, pid) = setup();
+        let new_wallet = Address::generate(&env);
+
+        // Create two tokens
+        let xlm_admin = Address::generate(&env);
+        let xlm_token = env.register_stellar_asset_contract_v2(xlm_admin).address();
+        let usdc_admin = Address::generate(&env);
+        let usdc_token = env.register_stellar_asset_contract_v2(usdc_admin).address();
+
+        // Seed balance only for XLM
+        seed_project_balance(&env, &cid, "proj-001", &xlm_token, 1000 * STROOP);
+
+        // Initiate withdrawal in USDC (which has no balance)
+        client.initiate_emergency_withdrawal(&admin, &pid, &new_wallet, &usdc_token, &100);
+
+        extend_ttl(&env, &cid);
+        let start = env.ledger().sequence();
+        env.ledger()
+            .set_sequence_number(start + EMERGENCY_WITHDRAWAL_TIMELOCK);
+
+        client.execute_emergency_withdrawal(&pid);
     }
 }

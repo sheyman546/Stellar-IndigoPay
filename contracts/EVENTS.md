@@ -129,6 +129,36 @@ This document lists all events emitted by the Stellar IndigoPay Soroban smart co
 
 ---
 
+## 13. `ew_init`
+
+**Description**: Emitted when an admin initiates a 7-day timelocked emergency withdrawal.
+
+| Event Name | Topics                                | Data                                                               | When Emitted                                  |
+| ---------- | ------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------- |
+| `ew_init`  | `["ew_init", admin, project_id]`     | `{ "new_wallet": Address, "amount": i128, "token": Address, "executable_at": u32 }` | When admin calls `initiate_emergency_withdrawal` |
+
+---
+
+## 14. `ew_exec`
+
+**Description**: Emitted when an emergency withdrawal is executed after the 7-day timelock.
+
+| Event Name | Topics                            | Data                                                   | When Emitted                                |
+| ---------- | --------------------------------- | ------------------------------------------------------ | ------------------------------------------- |
+| `ew_exec`  | `["ew_exec", project_id]`        | `{ "new_wallet": Address, "amount": i128, "token": Address }` | After timelock, funds transferred to new wallet |
+
+---
+
+## 15. `ew_cncl`
+
+**Description**: Emitted when an admin cancels a pending emergency withdrawal.
+
+| Event Name | Topics                              | Data | When Emitted                                |
+| ---------- | ----------------------------------- | ---- | ------------------------------------------- |
+| `ew_cncl`  | `["ew_cncl", admin, project_id]`   | `()` | When admin calls `cancel_emergency_withdrawal` |
+
+---
+
 ## Usage Notes
 
 - All events follow Soroban’s standard event format: `topics: Vec<Val>`, `data: Val`.
@@ -136,4 +166,10 @@ This document lists all events emitted by the Stellar IndigoPay Soroban smart co
 - Events can be queried via Horizon or Soroban RPC tools.
 - Frontend / backend should listen to these for real-time updates, notifications, and leaderboard.
 
-**Last Updated**: July 17, 2026
+**Last Updated**: July 18, 2026
+
+---
+
+## Coordination Note for #277 (Matching Pool)
+
+`DataKey::ProjectContractBalance(String, Address)` is the **canonical per-project per-token balance ledger** for all contract-held funds. Any deposit/matching-pool logic (including #277) **must** increment this key on deposit and decrement it on withdrawal. Do not introduce a parallel balance concept — the compound key already supports multi-token per project. See `SECURITY.md` for the full rationale.
