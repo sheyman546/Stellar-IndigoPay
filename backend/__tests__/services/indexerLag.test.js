@@ -1,5 +1,3 @@
-const { jest } = require('@jest/globals');
-
 jest.mock('../../src/db/pool', () => ({
   query: jest.fn(),
   connect: jest.fn(),
@@ -27,6 +25,12 @@ jest.mock('../../src/services/indexerDonationHandler', () => ({
 
 jest.mock('../../src/services/metrics', () => ({
   registry: {},
+  metrics: {
+    indigopayIndexerStreamReconnectsTotal: { inc: jest.fn() },
+    indexerOperationsSkippedTotal: { inc: jest.fn() },
+    indigopayIndexerLagLedgers: { set: jest.fn() },
+    indigopayIndexerAutoBackfillsTotal: { inc: jest.fn() },
+  },
 }));
 
 const pool = require('../../src/db/pool');

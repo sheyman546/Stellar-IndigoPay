@@ -25,42 +25,15 @@ const pool = require("../db/pool");
 const { handleDonation, setUsdcToXlmRate } = require("./indexerDonationHandler");
 const { enqueue: enqueueDLQ } = require("./indexerDLQWorker");
 const logger = require("../logger");
-const { Counter, Gauge } = require("prom-client");
-const { registry } = require("./metrics");
+const { metrics } = require("./metrics");
 const { runBackfill } = require("./indexerBackfill");
 
-// ─── Prometheus metrics (owned by this service) ────────────────────────────
-const indexerStreamReconnects = new Counter({
-  name: "indigopay_indexer_stream_reconnects_total",
-  help: "Total number of SSE stream reconnections",
-  registers: [registry],
-});
-
-const indexerOperationsSkipped = new Counter({
-  name: "indexer_operations_skipped_total",
-  help: "Total number of operations skipped by the indexer",
-  labelNames: ["reason"],
-  registers: [registry],
-});
-
-const indexerLagLedgers = new Gauge({
-  name: "indigopay_indexer_lag_ledgers",
-  help: "Number of ledgers the indexer is behind the latest Horizon ledger",
-  registers: [registry],
-});
-
-const indexerAutoBackfillsTotal = new Counter({
-  name: "indigopay_indexer_auto_backfills_total",
-  help: "Total number of autonomous micro-backfills triggered by lag detection",
-  labelNames: ["outcome"],
-  registers: [registry],
-});
-
-const indexerStreamReconnectsGauge = new Counter({
-  name: "indigopay_indexer_stream_reconnects_total",
-  help: "Total number of SSE stream reconnections",
-  registers: [registry],
-});
+const {
+  indigopayIndexerStreamReconnectsTotal: indexerStreamReconnects,
+  indexerOperationsSkippedTotal: indexerOperationsSkipped,
+  indigopayIndexerLagLedgers: indexerLagLedgers,
+  indigopayIndexerAutoBackfillsTotal: indexerAutoBackfillsTotal,
+} = metrics;
 
 // ─── SSE reconnection backoff ───────────────────────────────────────────────
 const BACKOFF_INITIAL_MS = 1000;
