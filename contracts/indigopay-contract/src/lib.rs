@@ -80,6 +80,29 @@ pub struct Project {
     /// chain before this field existed. Per UPGRADE.md, new fields must
     /// be appended or live behind a new storage version.
     pub paused: bool,
+    /// Fundraising goal in stroops for the active time-bound campaign.
+    /// `0` when `campaign_status` is `None`.
+    pub goal: i128,
+    /// Ledger sequence after which Active-campaign donations are rejected.
+    pub deadline_ledger: u32,
+    /// Lifecycle of the project's optional time-bound campaign.
+    pub campaign_status: CampaignStatus,
+}
+
+/// Lifecycle of a project's optional time-bound fundraising campaign.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CampaignStatus {
+    /// No campaign configured — donations behave as before.
+    None,
+    /// Accepting donations until deadline or goal.
+    Active,
+    /// `total_raised` met or exceeded `goal`.
+    GoalReached,
+    /// Deadline passed without meeting the goal (set on admin close).
+    Expired,
+    /// Manually closed by admin before or after the goal.
+    Closed,
 }
 
 /// Input for registering a project via `batch_register_projects`.
@@ -186,6 +209,35 @@ pub struct EmergencyWithdrawal {
     pub executable_at: u32,
 }
 
+// ─── Donation refund (#290) ─────────────────────────────────────────────────
+
+/// Status of a refund request.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub enum RefundRequestStatus {
+    Pending,
+    Approved,
+    Rejected,
+}
+
+/// A donor-initiated refund request. Created by `request_refund`, resolved by
+/// `approve_refund` (which atomically transfers tokens back) or `reject_refund`.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct RefundRequest {
+    pub donor: Address,
+    pub project_id: String,
+    pub amount: i128,
+    pub donation_record_index: u32,
+    pub requested_at: u32,
+    pub status: RefundRequestStatus,
+    pub token: Address,
+    /// Exact CO₂ offset credited at donation time, sourced from
+    /// `DonationCO2Offset(donation_record_index)`. Zero for pre-upgrade
+    /// donations that lack this key (documented known limitation).
+    pub co2_offset_grams: i128,
+}
+
 #[contracttype]
 pub enum DataKey {
     // Multi-sig admin set: Vec<Address> of authorized admin addresses.
@@ -268,6 +320,11 @@ pub enum DataKey {
     // → repeat for next token). Cleared by `execute_emergency_withdrawal`
     // or `cancel_emergency_withdrawal`.
     EmergencyWithdrawal(String),
+    // Donation refund (#290)
+    RefundRequest(u32),
+    RefundCount,
+    RefundForDonation(u32),
+    DonationCO2Offset(u32),
     // Per-project per-token contract-held balance — the canonical ledger
     // for how much of each asset each project has deposited into the
     // contract. Key: (project_id, token_address) → i128.
@@ -314,6 +371,11 @@ const UPGRADE_TIMELOCK_LEDGERS: u32 = 34_560;
 // a 7-day window to object off-chain before contract-held funds are sent to
 // the new wallet.
 const EMERGENCY_WITHDRAWAL_TIMELOCK: u32 = 120_960;
+
+// 24 hours × 3600 s / 5 s per ledger = 17 280 ledgers. The window after a
+// donation during which the donor may request a refund (subject to admin +
+// project wallet approval).
+const REFUND_COOLDOWN_LEDGERS: u32 = 17_280;
 
 /// Read the stored admin set. Panics if not initialized.
 fn read_admin_set(env: &Env) -> Vec<Address> {
@@ -410,6 +472,35 @@ fn calculate_badge(total_stroops: i128) -> BadgeTier {
     }
 }
 
+/// Reject donations when the project's campaign is not accepting them.
+fn require_campaign_accepts_donation(project: &Project, current_ledger: u32) {
+    match project.campaign_status {
+        CampaignStatus::None => {}
+        CampaignStatus::Active => {
+            if current_ledger > project.deadline_ledger {
+                panic!("Campaign deadline has passed");
+            }
+        }
+        CampaignStatus::GoalReached => panic!("Campaign goal already reached"),
+        CampaignStatus::Expired => panic!("Campaign has expired"),
+        CampaignStatus::Closed => panic!("Campaign is closed"),
+    }
+}
+
+/// After `total_raised` is updated, flip `Active` → `GoalReached` when the
+/// campaign goal is met. Returns `true` when the transition happened.
+fn apply_campaign_goal_progress(project: &mut Project) -> bool {
+    if project.campaign_status == CampaignStatus::Active
+        && project.goal > 0
+        && project.total_raised >= project.goal
+    {
+        project.campaign_status = CampaignStatus::GoalReached;
+        true
+    } else {
+        false
+    }
+}
+
 fn voting_weight_from_badge(badge: &BadgeTier) -> u32 {
     match badge {
         BadgeTier::None => 0,
@@ -489,6 +580,9 @@ impl IndigoPayContract {
             active: true,
             paused: false,
             registered_at: env.ledger().sequence(),
+            goal: 0,
+            deadline_ledger: 0,
+            campaign_status: CampaignStatus::None,
         };
         env.storage()
             .instance()
@@ -548,6 +642,9 @@ impl IndigoPayContract {
                 active: true,
                 paused: false,
                 registered_at: env.ledger().sequence(),
+                goal: 0,
+                deadline_ledger: 0,
+                campaign_status: CampaignStatus::None,
             };
             env.storage()
                 .instance()
@@ -701,6 +798,125 @@ impl IndigoPayContract {
         ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
     }
 
+    // ─── Time-bound campaigns ─────────────────────────────────────────────────
+
+    /// Admin-only: start a time-bound fundraising campaign on a project.
+    /// Goal is denominated in stroops (XLM-equivalent). Only one campaign
+    /// may be Active at a time; a prior campaign must be Closed or Expired.
+    pub fn create_campaign(
+        env: Env,
+        admin: Address,
+        project_id: String,
+        goal: i128,
+        deadline_ledger: u32,
+    ) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+        if goal <= 0 {
+            panic!("Campaign goal must be positive");
+        }
+        let current = env.ledger().sequence();
+        if deadline_ledger <= current {
+            panic!("Campaign deadline must be in the future");
+        }
+
+        let mut project: Project = env
+            .storage()
+            .instance()
+            .get(&DataKey::Project(project_id.clone()))
+            .expect("Project not found");
+        if !project.active {
+            panic!("Project is not active");
+        }
+        match project.campaign_status {
+            CampaignStatus::None | CampaignStatus::Closed | CampaignStatus::Expired => {}
+            CampaignStatus::Active | CampaignStatus::GoalReached => {
+                panic!("Project already has an open campaign");
+            }
+        }
+        if goal <= project.total_raised {
+            panic!("Campaign goal must exceed amount already raised");
+        }
+
+        project.goal = goal;
+        project.deadline_ledger = deadline_ledger;
+        project.campaign_status = CampaignStatus::Active;
+        env.storage()
+            .instance()
+            .set(&DataKey::Project(project_id.clone()), &project);
+        env.events().publish(
+            (symbol_short!("camp_crt"), admin, project_id),
+            (goal, deadline_ledger),
+        );
+    }
+
+    /// Admin-only: push an Active campaign's deadline further into the future.
+    pub fn extend_campaign(env: Env, admin: Address, project_id: String, new_deadline: u32) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+
+        let mut project: Project = env
+            .storage()
+            .instance()
+            .get(&DataKey::Project(project_id.clone()))
+            .expect("Project not found");
+        if project.campaign_status != CampaignStatus::Active {
+            panic!("Campaign is not active");
+        }
+        let current = env.ledger().sequence();
+        if current > project.deadline_ledger {
+            panic!("Campaign deadline has passed");
+        }
+        if new_deadline <= project.deadline_ledger {
+            panic!("New deadline must be after current deadline");
+        }
+        if new_deadline <= current {
+            panic!("Campaign deadline must be in the future");
+        }
+
+        project.deadline_ledger = new_deadline;
+        env.storage()
+            .instance()
+            .set(&DataKey::Project(project_id.clone()), &project);
+        env.events()
+            .publish((symbol_short!("camp_ext"), admin, project_id), new_deadline);
+    }
+
+    /// Admin-only: end a campaign. Early close → `Closed`; past deadline
+    /// without meeting the goal → `Expired`; closing after `GoalReached` → `Closed`.
+    pub fn close_campaign(env: Env, admin: Address, project_id: String) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+
+        let mut project: Project = env
+            .storage()
+            .instance()
+            .get(&DataKey::Project(project_id.clone()))
+            .expect("Project not found");
+        match project.campaign_status {
+            CampaignStatus::Active => {
+                if env.ledger().sequence() > project.deadline_ledger
+                    && project.total_raised < project.goal
+                {
+                    project.campaign_status = CampaignStatus::Expired;
+                } else {
+                    project.campaign_status = CampaignStatus::Closed;
+                }
+            }
+            CampaignStatus::GoalReached => {
+                project.campaign_status = CampaignStatus::Closed;
+            }
+            _ => panic!("Campaign cannot be closed"),
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::Project(project_id.clone()), &project);
+        env.events().publish(
+            (symbol_short!("camp_cls"), admin, project_id),
+            project.campaign_status.clone(),
+        );
+    }
+
     // ─── Donations ────────────────────────────────────────────────────────────
 
     pub fn donate(
@@ -762,6 +978,7 @@ impl IndigoPayContract {
         if project.paused {
             panic!("Project is temporarily paused");
         }
+        require_campaign_accepts_donation(&project, env.ledger().sequence());
 
         // Pre-compute CO2 increment with checked multiplication so an attacker
         // can't trigger a silent wrap via a project with a huge co2_per_xlm.
@@ -789,6 +1006,7 @@ impl IndigoPayContract {
             .total_raised
             .checked_add(amount)
             .expect("Project total_raised overflow");
+        let goal_reached = apply_campaign_goal_progress(&mut project);
         let donated_key = DataKey::HasDonated(project_id.clone(), donor.clone());
         if !env.storage().instance().has(&donated_key) {
             env.storage().instance().set(&donated_key, &true);
@@ -800,6 +1018,12 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .set(&DataKey::Project(project_id.clone()), &project);
+        if goal_reached {
+            env.events().publish(
+                (symbol_short!("camp_goal"), project_id.clone()),
+                project.total_raised,
+            );
+        }
 
         donor_stats.total_donated = donor_stats
             .total_donated
@@ -867,6 +1091,10 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .set(&DataKey::DonationRecord(dc), &donation_record);
+        // Snapshot CO₂ offset for exact reversal on refund (#290).
+        env.storage()
+            .instance()
+            .set(&DataKey::DonationCO2Offset(dc), &co2_increment);
 
         let gr: i128 = env
             .storage()
@@ -940,6 +1168,7 @@ impl IndigoPayContract {
         if project.paused {
             panic!("Project is temporarily paused");
         }
+        require_campaign_accepts_donation(&project, env.ledger().sequence());
 
         // Pre-compute CO2 increment using the XLM-equivalent received
         let xlm_units = xlm_amount / STROOP;
@@ -965,6 +1194,7 @@ impl IndigoPayContract {
             .total_raised
             .checked_add(xlm_amount)
             .expect("Project total_raised overflow");
+        let goal_reached = apply_campaign_goal_progress(&mut project);
         let donated_key = DataKey::HasDonated(project_id.clone(), donor.clone());
         if !env.storage().instance().has(&donated_key) {
             env.storage().instance().set(&donated_key, &true);
@@ -976,6 +1206,12 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .set(&DataKey::Project(project_id.clone()), &project);
+        if goal_reached {
+            env.events().publish(
+                (symbol_short!("camp_goal"), project_id.clone()),
+                project.total_raised,
+            );
+        }
 
         donor_stats.total_donated = donor_stats
             .total_donated
@@ -1043,6 +1279,10 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .set(&DataKey::DonationRecord(dc), &donation_record);
+        // Snapshot CO₂ offset for exact reversal on refund (#290).
+        env.storage()
+            .instance()
+            .set(&DataKey::DonationCO2Offset(dc), &co2_increment);
 
         let gr: i128 = env
             .storage()
@@ -1583,6 +1823,7 @@ impl IndigoPayContract {
         if project.paused {
             panic!("Project is temporarily paused");
         }
+        require_campaign_accepts_donation(&project, env.ledger().sequence());
 
         // Pre-compute CO2 increment using XLM-equivalent
         let xlm_units = xlm_equivalent / STROOP;
@@ -1607,6 +1848,7 @@ impl IndigoPayContract {
             .total_raised
             .checked_add(xlm_equivalent)
             .expect("Project total_raised overflow");
+        let goal_reached = apply_campaign_goal_progress(&mut project);
         let donated_key = DataKey::HasDonated(project_id.clone(), donor.clone());
         if !env.storage().instance().has(&donated_key) {
             env.storage().instance().set(&donated_key, &true);
@@ -1618,6 +1860,12 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .set(&DataKey::Project(project_id.clone()), &project);
+        if goal_reached {
+            env.events().publish(
+                (symbol_short!("camp_goal"), project_id.clone()),
+                project.total_raised,
+            );
+        }
 
         donor_stats.total_donated = donor_stats
             .total_donated
@@ -1674,6 +1922,10 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .set(&DataKey::DonationRecord(dc), &donation_record);
+        // Snapshot CO₂ offset for exact reversal on refund (#290).
+        env.storage()
+            .instance()
+            .set(&DataKey::DonationCO2Offset(dc), &co2_increment);
 
         let gr: i128 = env
             .storage()
@@ -2225,6 +2477,237 @@ impl IndigoPayContract {
         env.storage()
             .instance()
             .get(&DataKey::EmergencyWithdrawal(project_id))
+    }
+
+    // ─── Donation refund (#290) ───────────────────────────────────────────────
+
+    /// Donor-initiated refund request. Must be called within the cooldown
+    /// window (`REFUND_COOLDOWN_LEDGERS`) after the original donation.
+    /// Creates a `RefundRequest` with status `Pending` for admin + project
+    /// wallet approval.
+    pub fn request_refund(env: Env, donor: Address, donation_record_index: u32, token: Address) {
+        donor.require_auth();
+        require_not_paused(&env);
+
+        let record: DonationRecord = env
+            .storage()
+            .instance()
+            .get(&DataKey::DonationRecord(donation_record_index))
+            .expect("Donation record not found");
+
+        if record.donor != donor {
+            panic!("Only the donor can request a refund");
+        }
+
+        let current_ledger = env.ledger().sequence();
+        let deadline = record
+            .ledger
+            .checked_add(REFUND_COOLDOWN_LEDGERS)
+            .expect("Refund deadline overflow");
+        if current_ledger > deadline {
+            panic!("Refund cooldown expired");
+        }
+
+        // One refund request per donation — prevent duplicate requests.
+        let refund_for_donation_key = DataKey::RefundForDonation(donation_record_index);
+        if env.storage().instance().has(&refund_for_donation_key) {
+            panic!("Refund already requested for this donation");
+        }
+
+        // Snapshot CO₂ offset from the separate key written at donation time.
+        // Pre-upgrade donations lack this key; CO₂ reversal defaults to 0
+        // (documented known limitation — see SECURITY.md).
+        let co2_offset_grams: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::DonationCO2Offset(donation_record_index))
+            .unwrap_or(0);
+
+        let refund_count: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::RefundCount)
+            .unwrap_or(0);
+        let refund_id = refund_count;
+
+        let request = RefundRequest {
+            donor: donor.clone(),
+            project_id: record.project.clone(),
+            amount: record.amount,
+            donation_record_index,
+            requested_at: current_ledger,
+            status: RefundRequestStatus::Pending,
+            token,
+            co2_offset_grams,
+        };
+
+        env.storage()
+            .instance()
+            .set(&DataKey::RefundRequest(refund_id), &request);
+        env.storage()
+            .instance()
+            .set(&refund_for_donation_key, &refund_id);
+        env.storage()
+            .instance()
+            .set(&DataKey::RefundCount, &(refund_id + 1));
+
+        env.events().publish(
+            (symbol_short!("rfnd_rq"), refund_id, donor),
+            (record.project, record.amount, donation_record_index),
+        );
+    }
+
+    /// Admin + project wallet co-sign to approve a pending refund.
+    /// Atomically transfers tokens from the project wallet back to the donor
+    /// and decrements all counters (CEI ordering — effects before interaction).
+    ///
+    /// Badges are permanent and NOT recalculated. `DonationCount` is historical
+    /// and NOT decremented.
+    pub fn approve_refund(env: Env, admin: Address, refund_id: u32) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+
+        let mut request: RefundRequest = env
+            .storage()
+            .instance()
+            .get(&DataKey::RefundRequest(refund_id))
+            .expect("Refund request not found");
+
+        if request.status != RefundRequestStatus::Pending {
+            panic!("Refund request is not pending");
+        }
+
+        let mut project: Project = env
+            .storage()
+            .instance()
+            .get(&DataKey::Project(request.project_id.clone()))
+            .expect("Project not found");
+
+        // Project wallet must co-sign — ensures the token transfer actually
+        // happens atomically, so "Approved" reliably means "Paid" for
+        // non-adversarial cases (wrong project, wrong amount, tech error).
+        // The fraud case is unresolvable on-chain without escrow.
+        project.wallet.require_auth();
+
+        // ── Effects: all counter adjustments BEFORE the token transfer (CEI).
+
+        project.total_raised = project
+            .total_raised
+            .checked_sub(request.amount)
+            .expect("Project total_raised underflow on refund");
+        env.storage()
+            .instance()
+            .set(&DataKey::Project(request.project_id.clone()), &project);
+
+        // Donor stats: decrement totals but do NOT recalculate badge (permanent).
+        let mut donor_stats: DonorStats = env
+            .storage()
+            .instance()
+            .get(&DataKey::DonorStats(request.donor.clone()))
+            .unwrap_or(DonorStats {
+                total_donated: 0,
+                donation_count: 0,
+                badge: BadgeTier::None,
+                co2_offset_grams: 0,
+            });
+        donor_stats.total_donated = donor_stats
+            .total_donated
+            .checked_sub(request.amount)
+            .expect("Donor total_donated underflow on refund");
+        donor_stats.co2_offset_grams = donor_stats
+            .co2_offset_grams
+            .checked_sub(request.co2_offset_grams)
+            .expect("Donor co2_offset underflow on refund");
+        // Badge is NOT recalculated — badges are permanent.
+        env.storage()
+            .instance()
+            .set(&DataKey::DonorStats(request.donor.clone()), &donor_stats);
+
+        // Per-project cumulative donation total (milestone NFT tracker).
+        let proj_total_key =
+            DataKey::DonorProjectTotal(request.project_id.clone(), request.donor.clone());
+        let prev_proj_total: i128 = env.storage().instance().get(&proj_total_key).unwrap_or(0);
+        env.storage().instance().set(
+            &proj_total_key,
+            &prev_proj_total
+                .checked_sub(request.amount)
+                .expect("DonorProjectTotal underflow on refund"),
+        );
+
+        // Global counters.
+        let gr: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::GlobalTotalRaised)
+            .unwrap_or(0);
+        env.storage().instance().set(
+            &DataKey::GlobalTotalRaised,
+            &gr.checked_sub(request.amount)
+                .expect("GlobalTotalRaised underflow on refund"),
+        );
+
+        let gc: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::GlobalCO2OffsetGrams)
+            .unwrap_or(0);
+        env.storage().instance().set(
+            &DataKey::GlobalCO2OffsetGrams,
+            &gc.checked_sub(request.co2_offset_grams)
+                .expect("GlobalCO2OffsetGrams underflow on refund"),
+        );
+
+        // Mark approved before the external transfer.
+        request.status = RefundRequestStatus::Approved;
+        env.storage()
+            .instance()
+            .set(&DataKey::RefundRequest(refund_id), &request);
+
+        // ── Interaction: token transfer from project wallet back to donor.
+        let token_client = token::Client::new(&env, &request.token);
+        token_client.transfer(&project.wallet, &request.donor, &request.amount);
+
+        env.events().publish(
+            (symbol_short!("rfnd_ap"), refund_id, admin),
+            (request.project_id, request.amount, request.donor),
+        );
+        ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
+    }
+
+    /// Admin-only: reject a pending refund request. The donation stands;
+    /// no counters are adjusted and no tokens move.
+    pub fn reject_refund(env: Env, admin: Address, refund_id: u32) {
+        require_admin_for_routine(&env, &admin);
+        require_not_paused(&env);
+
+        let mut request: RefundRequest = env
+            .storage()
+            .instance()
+            .get(&DataKey::RefundRequest(refund_id))
+            .expect("Refund request not found");
+
+        if request.status != RefundRequestStatus::Pending {
+            panic!("Refund request is not pending");
+        }
+
+        request.status = RefundRequestStatus::Rejected;
+        env.storage()
+            .instance()
+            .set(&DataKey::RefundRequest(refund_id), &request);
+
+        env.events().publish(
+            (symbol_short!("rfnd_rj"), refund_id, admin),
+            (request.project_id, request.donor),
+        );
+    }
+
+    /// Read-only: returns the refund request for the given ID, or panics if
+    /// not found.
+    pub fn get_refund_request(env: Env, refund_id: u32) -> RefundRequest {
+        env.storage()
+            .instance()
+            .get(&DataKey::RefundRequest(refund_id))
+            .expect("Refund request not found")
     }
 }
 
@@ -3400,6 +3883,267 @@ mod tests {
         client.cancel_admin_transfer(&signers1(&env, &admin));
     }
 
+    // ─── Time-bound campaign tests ──────────────────────────────────────────
+
+    #[test]
+    fn test_create_campaign_sets_active_goal_and_deadline() {
+        let (env, _cid, client, admin, pid) = setup();
+        let deadline = env.ledger().sequence() + 1_000;
+        let goal = 5_000 * STROOP;
+        client.create_campaign(&admin, &pid, &goal, &deadline);
+        let p = client.get_project(&pid);
+        assert_eq!(p.campaign_status, CampaignStatus::Active);
+        assert_eq!(p.goal, goal);
+        assert_eq!(p.deadline_ledger, deadline);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only admin can perform this action")]
+    fn test_create_campaign_non_admin_fails() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let imposter = Address::generate(&env);
+        client.create_campaign(
+            &imposter,
+            &pid,
+            &(100 * STROOP),
+            &(env.ledger().sequence() + 10),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Campaign goal must be positive")]
+    fn test_create_campaign_zero_goal_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        client.create_campaign(&admin, &pid, &0i128, &(env.ledger().sequence() + 10));
+    }
+
+    #[test]
+    #[should_panic(expected = "Campaign deadline must be in the future")]
+    fn test_create_campaign_past_deadline_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        client.create_campaign(&admin, &pid, &(100 * STROOP), &env.ledger().sequence());
+    }
+
+    #[test]
+    #[should_panic(expected = "Project already has an open campaign")]
+    fn test_create_campaign_while_active_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        let deadline = env.ledger().sequence() + 100;
+        client.create_campaign(&admin, &pid, &(100 * STROOP), &deadline);
+        client.create_campaign(&admin, &pid, &(200 * STROOP), &(deadline + 100));
+    }
+
+    #[test]
+    fn test_donate_under_goal_keeps_campaign_active() {
+        let (env, _cid, client, admin, pid) = setup();
+        let goal = 100 * STROOP;
+        client.create_campaign(&admin, &pid, &goal, &(env.ledger().sequence() + 1_000));
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&donor, &(50 * STROOP));
+        client.donate(&token, &donor, &pid, &(50 * STROOP), &0u32);
+
+        let p = client.get_project(&pid);
+        assert_eq!(p.total_raised, 50 * STROOP);
+        assert_eq!(p.campaign_status, CampaignStatus::Active);
+    }
+
+    #[test]
+    fn test_donate_reaching_goal_sets_goal_reached() {
+        let (env, _cid, client, admin, pid) = setup();
+        let goal = 100 * STROOP;
+        client.create_campaign(&admin, &pid, &goal, &(env.ledger().sequence() + 1_000));
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&donor, &(100 * STROOP));
+        client.donate(&token, &donor, &pid, &(100 * STROOP), &0u32);
+
+        let p = client.get_project(&pid);
+        assert_eq!(p.total_raised, 100 * STROOP);
+        assert_eq!(p.campaign_status, CampaignStatus::GoalReached);
+    }
+
+    #[test]
+    #[should_panic(expected = "Campaign goal already reached")]
+    fn test_donate_after_goal_reached_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        let goal = 50 * STROOP;
+        client.create_campaign(&admin, &pid, &goal, &(env.ledger().sequence() + 1_000));
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&donor, &(100 * STROOP));
+        client.donate(&token, &donor, &pid, &(50 * STROOP), &0u32);
+        client.donate(&token, &donor, &pid, &(50 * STROOP), &1u32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Campaign deadline has passed")]
+    fn test_donate_after_deadline_fails() {
+        let (env, cid, client, admin, pid) = setup();
+        let start = env.ledger().sequence();
+        let deadline = start + 50;
+        client.create_campaign(&admin, &pid, &(1_000 * STROOP), &deadline);
+
+        extend_ttl(&env, &cid);
+        env.ledger().set_sequence_number(deadline + 1);
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&donor, &STROOP);
+        client.donate(&token, &donor, &pid, &STROOP, &0u32);
+    }
+
+    #[test]
+    fn test_extend_campaign_updates_deadline() {
+        let (env, _cid, client, admin, pid) = setup();
+        let start = env.ledger().sequence();
+        client.create_campaign(&admin, &pid, &(100 * STROOP), &(start + 100));
+        client.extend_campaign(&admin, &pid, &(start + 500));
+        assert_eq!(client.get_project(&pid).deadline_ledger, start + 500);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only admin can perform this action")]
+    fn test_extend_campaign_non_admin_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        let start = env.ledger().sequence();
+        client.create_campaign(&admin, &pid, &(100 * STROOP), &(start + 100));
+        let imposter = Address::generate(&env);
+        client.extend_campaign(&imposter, &pid, &(start + 200));
+    }
+
+    #[test]
+    fn test_close_campaign_early_sets_closed() {
+        let (env, _cid, client, admin, pid) = setup();
+        client.create_campaign(
+            &admin,
+            &pid,
+            &(100 * STROOP),
+            &(env.ledger().sequence() + 1_000),
+        );
+        client.close_campaign(&admin, &pid);
+        assert_eq!(
+            client.get_project(&pid).campaign_status,
+            CampaignStatus::Closed
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Campaign is closed")]
+    fn test_donate_after_close_fails() {
+        let (env, _cid, client, admin, pid) = setup();
+        client.create_campaign(
+            &admin,
+            &pid,
+            &(100 * STROOP),
+            &(env.ledger().sequence() + 1_000),
+        );
+        client.close_campaign(&admin, &pid);
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&donor, &STROOP);
+        client.donate(&token, &donor, &pid, &STROOP, &0u32);
+    }
+
+    #[test]
+    fn test_close_campaign_after_deadline_sets_expired() {
+        let (env, cid, client, admin, pid) = setup();
+        let start = env.ledger().sequence();
+        let deadline = start + 40;
+        client.create_campaign(&admin, &pid, &(1_000 * STROOP), &deadline);
+        extend_ttl(&env, &cid);
+        env.ledger().set_sequence_number(deadline + 1);
+        client.close_campaign(&admin, &pid);
+        assert_eq!(
+            client.get_project(&pid).campaign_status,
+            CampaignStatus::Expired
+        );
+    }
+
+    #[test]
+    fn test_donate_asset_respects_campaign_goal() {
+        let (env, _cid, client, admin, pid) = setup();
+        client.create_campaign(
+            &admin,
+            &pid,
+            &(30 * STROOP),
+            &(env.ledger().sequence() + 1_000),
+        );
+        let donor = Address::generate(&env);
+        client.donate_asset(&donor, &pid, &(30 * STROOP), &symbol_short!("yXLM"), &0u32);
+        assert_eq!(
+            client.get_project(&pid).campaign_status,
+            CampaignStatus::GoalReached
+        );
+    }
+
+    #[test]
+    fn test_donate_usdc_respects_campaign_deadline() {
+        let (env, cid, client, admin, pid) = setup();
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        client.set_usdc_token(&admin, &token);
+        let oracle_id = env.register_contract(None, MockOracle);
+        client.set_oracle(&admin, &oracle_id);
+
+        let start = env.ledger().sequence();
+        let deadline = start + 30;
+        // MockOracle rate = 8 XLM per USDC stroop; 1 USDC stroop → 8 XLM stroops.
+        client.create_campaign(&admin, &pid, &(1_000 * STROOP), &deadline);
+
+        extend_ttl(&env, &cid);
+        env.ledger().set_sequence_number(deadline + 1);
+
+        let donor = Address::generate(&env);
+        let usdc_amount: i128 = 1_000_000;
+        StellarAssetClient::new(&env, &token).mint(&donor, &usdc_amount);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            client.donate_usdc(&token, &donor, &pid, &usdc_amount, &0u32);
+        }));
+        assert!(
+            result.is_err(),
+            "donate_usdc must reject after campaign deadline"
+        );
+    }
+
+    #[test]
+    fn test_donate_without_campaign_unchanged() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(&env, &token).mint(&donor, &(10 * STROOP));
+        client.donate(&token, &donor, &pid, &(10 * STROOP), &0u32);
+        let p = client.get_project(&pid);
+        assert_eq!(p.campaign_status, CampaignStatus::None);
+        assert_eq!(p.total_raised, 10 * STROOP);
+    }
+
+    // ─── Contract-level pause tests ─────────────────────────────────────────
+
     #[test]
     #[should_panic(expected = "old_admin is not in the admin set")]
     fn test_transfer_admin_old_admin_not_in_set_panics() {
@@ -4120,5 +4864,243 @@ mod tests {
             .set_sequence_number(start + EMERGENCY_WITHDRAWAL_TIMELOCK);
 
         client.execute_emergency_withdrawal(&pid);
+    }
+
+    // ─── Donation refund tests (#290) ──────────────────────────────────────
+
+    /// Helper: mint tokens, donate, return (donor, token, donation_index).
+    fn setup_donation(
+        env: &Env,
+        client: &IndigoPayContractClient,
+        pid: &String,
+    ) -> (Address, Address, u32) {
+        let donor = Address::generate(env);
+        let token_admin = Address::generate(env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        StellarAssetClient::new(env, &token).mint(&donor, &(50 * STROOP));
+        let donation_index: u32 = client.get_donation_count();
+        client.donate(&token, &donor, pid, &(25 * STROOP), &0u32);
+        (donor, token, donation_index)
+    }
+
+    #[test]
+    fn test_request_refund_success() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        client.request_refund(&donor, &donation_index, &token);
+
+        let req = client.get_refund_request(&0);
+        assert_eq!(req.donor, donor);
+        assert_eq!(req.project_id, pid);
+        assert_eq!(req.amount, 25 * STROOP);
+        assert_eq!(req.donation_record_index, donation_index);
+        assert_eq!(req.requested_at, env.ledger().sequence());
+        assert_eq!(req.status, RefundRequestStatus::Pending);
+        assert_eq!(req.token, token);
+        // co2_per_xlm is 100 in setup(); 25 XLM = 25 stroop-units * 100 = 2500
+        assert_eq!(req.co2_offset_grams, 25 * 100);
+        assert_eq!(client.get_refund_request(&0), req);
+    }
+
+    #[test]
+    #[should_panic(expected = "Refund cooldown expired")]
+    fn test_request_refund_after_cooldown_panics() {
+        let (env, cid, client, _admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        extend_ttl(&env, &cid);
+        env.ledger()
+            .set_sequence_number(env.ledger().sequence() + REFUND_COOLDOWN_LEDGERS + 1);
+
+        client.request_refund(&donor, &donation_index, &token);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only the donor can request a refund")]
+    fn test_request_refund_wrong_donor_panics() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let (_donor, token, donation_index) = setup_donation(&env, &client, &pid);
+        let imposter = Address::generate(&env);
+
+        client.request_refund(&imposter, &donation_index, &token);
+    }
+
+    #[test]
+    #[should_panic(expected = "Refund already requested for this donation")]
+    fn test_request_refund_double_request_panics() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.request_refund(&donor, &donation_index, &token);
+    }
+
+    #[test]
+    #[should_panic(expected = "Donation record not found")]
+    fn test_request_refund_nonexistent_donation_panics() {
+        let (env, _cid, client, _admin, _pid) = setup();
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+
+        client.request_refund(&donor, &999u32, &token);
+    }
+
+    #[test]
+    fn test_approve_refund_counters_decremented() {
+        let (env, _cid, client, admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        // Snapshot pre-refund counters.
+        let project_before = client.get_project(&pid);
+        let stats_before = client.get_donor_stats(&donor);
+        let global_before = client.get_global_stats();
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.approve_refund(&admin, &0);
+
+        // All counters must be decremented by the donation amount.
+        let project_after = client.get_project(&pid);
+        assert_eq!(
+            project_after.total_raised,
+            project_before.total_raised - 25 * STROOP
+        );
+
+        let stats_after = client.get_donor_stats(&donor);
+        assert_eq!(
+            stats_after.total_donated,
+            stats_before.total_donated - 25 * STROOP
+        );
+        assert_eq!(
+            stats_after.co2_offset_grams,
+            stats_before.co2_offset_grams - 25 * 100
+        );
+
+        let global_after = client.get_global_stats();
+        assert_eq!(
+            global_after.total_raised,
+            global_before.total_raised - 25 * STROOP
+        );
+        assert_eq!(
+            global_after.co2_offset_grams,
+            global_before.co2_offset_grams - 25 * 100
+        );
+        // DonationCount is NOT decremented (historical).
+        assert_eq!(global_after.donation_count, global_before.donation_count);
+    }
+
+    #[test]
+    fn test_approve_refund_badge_preserved() {
+        let (env, _cid, client, admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        // Verify donor reached Seedling badge (25 XLM > 10 XLM threshold).
+        let stats_before = client.get_donor_stats(&donor);
+        assert_eq!(stats_before.badge, BadgeTier::Seedling);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.approve_refund(&admin, &0);
+
+        // Badge is NOT recalculated — stays Seedling even though total_donated
+        // dropped below the 10 XLM threshold.
+        let stats_after = client.get_donor_stats(&donor);
+        assert_eq!(stats_after.badge, BadgeTier::Seedling);
+    }
+
+    #[test]
+    fn test_approve_refund_token_transferred() {
+        let (env, _cid, client, admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        // Fund the project wallet so it can return funds.
+        let project = client.get_project(&pid);
+        StellarAssetClient::new(&env, &token).mint(&project.wallet, &(50 * STROOP));
+
+        let balance_before = StellarAssetClient::new(&env, &token).balance(&donor);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.approve_refund(&admin, &0);
+
+        let balance_after = StellarAssetClient::new(&env, &token).balance(&donor);
+        assert_eq!(balance_after, balance_before + 25 * STROOP);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only admin can perform this action")]
+    fn test_approve_refund_non_admin_panics() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+        let imposter = Address::generate(&env);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.approve_refund(&imposter, &0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Refund request is not pending")]
+    fn test_approve_refund_not_pending_panics() {
+        let (env, _cid, client, admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.reject_refund(&admin, &0);
+        // Now try to approve a rejected request.
+        client.approve_refund(&admin, &0);
+    }
+
+    #[test]
+    fn test_reject_refund_success() {
+        let (env, _cid, client, admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        let project_before = client.get_project(&pid);
+        let stats_before = client.get_donor_stats(&donor);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.reject_refund(&admin, &0);
+
+        let req = client.get_refund_request(&0);
+        assert_eq!(req.status, RefundRequestStatus::Rejected);
+
+        // Counters are untouched — donation stands.
+        let project_after = client.get_project(&pid);
+        assert_eq!(project_after.total_raised, project_before.total_raised);
+        let stats_after = client.get_donor_stats(&donor);
+        assert_eq!(stats_after.total_donated, stats_before.total_donated);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only admin can perform this action")]
+    fn test_reject_refund_non_admin_panics() {
+        let (env, _cid, client, _admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+        let imposter = Address::generate(&env);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.reject_refund(&imposter, &0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Refund request is not pending")]
+    fn test_reject_refund_not_pending_panics() {
+        let (env, _cid, client, admin, pid) = setup();
+        let (donor, token, donation_index) = setup_donation(&env, &client, &pid);
+
+        client.request_refund(&donor, &donation_index, &token);
+        client.approve_refund(&admin, &0);
+        // Now try to reject an approved request.
+        client.reject_refund(&admin, &0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Refund request not found")]
+    fn test_get_refund_request_not_found_panics() {
+        let (_env, _cid, client, _admin, _pid) = setup();
+        client.get_refund_request(&0);
     }
 }

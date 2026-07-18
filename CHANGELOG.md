@@ -2,6 +2,24 @@
 
 ### Features
 
+* **monitoring:** multi-window SLO burn-rate alerting with error budget dashboard (closes #240)
+  - Defined SLOs: donation recording (99.5%) and project listing (99.9%) over 30-day rolling windows
+  - Recording rules in `monitoring/recording-rules.yml` computing error ratios and budget remaining
+  - Multi-window burn-rate alerts: 2% in 1h (page), 5% in 6h (page), 10% in 3d (warn) for both SLOs
+  - Grafana dashboard: error budget gauges (green/yellow/red thresholds), burn-rate timeseries, top-5xx-routes table
+  - SLO definitions and burn-rate alert response runbook in `docs/performance.md`
+  - Prometheus `prometheus.yml` updated to load recording-rules.yml and alert-rules-routing.yml
+
+* **backend,monitoring:** Postgres connection pool observability dashboard with adaptive pool sizing (closes #244)
+  - New `db_pool_max` Prometheus gauge tracks the current pool capacity
+  - Adaptive pool sizing: if saturated (all connections busy with waiters) for 60 s, increase max by 25 % up to `PG_MAX_HARD_CAP` (default 50)
+  - `parameterizeQuery()` helper replaces string and numeric literals with `$N` placeholders for PII-safe slow-query logging
+  - `extractQueryType()` classifies SQL queries as SELECT/INSERT/UPDATE/DELETE/WITH/OTHER
+  - Queries taking >1 s trigger EXPLAIN (ANALYZE, BUFFERS) fire-and-forget (gated by `DB_EXPLAIN_SLOW_QUERIES=true`)
+  - Grafana dashboard: connection pool health panels (heatmap, gauges for active/idle/waiting, pool max vs active timeseries, slow query count stat)
+  - New alert rules: `DBPoolSaturated` (warn, waiting > 0 for 5 m), `DBPoolExhausted` (page, all connections busy + waiters for 10 m with PagerDuty routing)
+  - 26 new unit tests (16 pool, 10 metrics)
+
 * **frontend,backend:** real-time transparency dashboard with SLO, business metrics, and donation geo-map (closes #253)
   - New public dashboard page at `/transparency` with platform health banner, impact stat cards, live donation map, and recent donations feed
   - Health banner polls `/api/readyz` every 30s displaying operational/degraded/outage status with expandable detail rows
