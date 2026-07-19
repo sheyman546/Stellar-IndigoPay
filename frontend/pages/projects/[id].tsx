@@ -41,6 +41,7 @@ import {
   CATEGORY_ICONS,
   copyToClipboard,
   shortenAddress,
+  formatDate,
 } from "@/utils/format";
 import {
   accountUrl,
@@ -790,6 +791,14 @@ export default function ProjectDetail({ ogProject }: ProjectDetailProps) {
   const countdownText = activeCampaign
     ? formatCountdown(activeCampaign.deadline, countdownNow)
     : null;
+
+  const activeMatches = matches.filter((match) => {
+    const expiresAtTime = new Date(match.expiresAt).getTime();
+    const isExpired = expiresAtTime <= countdownNow;
+    const isExhausted = Number(match.matchedXLM) >= Number(match.capXLM);
+    const isCancelled = match.status === "cancelled" || match.status === "expired" || match.status === "exhausted";
+    return !isExpired && !isExhausted && !isCancelled;
+  });
 
   const calcAmountNum = parseFloat(calcAmount) || 0;
   const estimatedCO2 = calcAmountNum * (project.co2OffsetKg || 0);
@@ -1773,6 +1782,37 @@ export default function ProjectDetail({ ogProject }: ProjectDetailProps) {
               </div>
             )}
           </div>
+
+          {activeMatches.length > 0 && (
+            <div className="card border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 mb-6 dark:from-zinc-900 dark:to-zinc-800 border dark:border-green-800">
+              <h3 className="font-display font-bold text-green-900 dark:text-green-400 mb-3 flex items-center gap-2">
+                <span>🔥</span> Donation Matching Active
+              </h3>
+              <div className="space-y-4 font-body">
+                {activeMatches.map((match) => {
+                  const cap = parseFloat(match.capXLM);
+                  const matched = parseFloat(match.matchedXLM);
+                  const progress = cap > 0 ? Math.min(100, (matched / cap) * 100) : 0;
+                  return (
+                    <div key={match.id} className="border-t border-green-100 dark:border-green-900/50 pt-3 first:border-t-0 first:pt-0">
+                      <p className="text-sm font-semibold text-green-800 dark:text-green-300 mb-1">
+                        Your donation will be matched {match.multiplier}× up to {formatXLM(match.capXLM)}!
+                      </p>
+                      <div className="h-2 w-full bg-green-200 dark:bg-green-900 rounded-full overflow-hidden my-2">
+                        <div
+                          className="h-full bg-green-600 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        {formatXLM(match.remainingXLM)} remaining · Expires {formatDate(match.expiresAt)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {publicKey ? (
             <div id="donate-form">
