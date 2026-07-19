@@ -16,7 +16,9 @@ export function useShortcuts(shortcuts: Shortcut[]) {
         !target ||
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable
+        target.isContentEditable ||
+        target.contentEditable === "true" ||
+        target.getAttribute("contenteditable") === "true"
       ) {
         return;
       }
