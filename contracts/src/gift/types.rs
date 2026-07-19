@@ -1,2 +1,8 @@
-// Defines the custom data structures and types used by the gift module.
-// e.g., Gift struct, DataKey enum for storage mapping.
+use soroban_sdk::contracttype;
+
+/// Storage keys for the gift contract's instance storage.
+#[contracttype]
+pub enum DataKey {
+    /// The privileged admin address, set once at initialization.
+    Admin,
+}
