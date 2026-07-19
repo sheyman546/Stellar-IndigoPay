@@ -33,7 +33,6 @@ import type {
   MonthlySubscription,
 } from "@/utils/types";
 import { useWishlist } from "@/hooks/useWishlist";
-import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { QueryErrorFallback } from "@/components/QueryErrorFallback";
 export default function Dashboard() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
@@ -241,16 +240,9 @@ export default function Dashboard() {
     w.document.close();
   };
 
-  if (loading)
-    return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 animate-fade-in">
-        <DashboardSkeleton />
-      </div>
-    );
-
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 animate-fade-in">
-      {(loadError && !loading) || isRetrying ? (
+      {loadError && !loading ? (
         <QueryErrorFallback
           error={loadError}
           onRetry={handleRetryLoad}
