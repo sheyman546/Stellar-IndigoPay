@@ -350,6 +350,8 @@ pub enum DataKey {
     ProjectContractBalance(String, Address),
     RecurringDonation(Address, u32),
     DonorRecurringCount(Address),
+    VoteDelegation(Address),
+    DelegatedWeight(Address),
     NativeTokenAddress,
 }
 

@@ -12,6 +12,7 @@ jobs:
   test:
     name: Soroban Contracts (Rust)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: contracts
@@ -138,6 +139,7 @@ jobs:
     name: Coverage (tarpaulin)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: contracts
@@ -169,6 +171,7 @@ jobs:
   verification:
     name: Formal Verification (Kani)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: contracts/indigopay-contract/verification/kani
