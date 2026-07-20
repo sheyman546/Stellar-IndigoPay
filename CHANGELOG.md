@@ -3,127 +3,128 @@
 ### Performance
 
 * **frontend:** isolate LiveDonationTicker component to eliminate 3.5s page-wide re-render cycle
-  - Extract `LiveDonationTicker` into `frontend/components/LiveDonationTicker.tsx` as a `React.memo`-wrapped component
-  - Move state rotation (`tickerIndex`) and `setInterval` loop internally inside `LiveDonationTicker`
-  - Remove parent `Home` page component re-renders on ticker ticks
-  - Add unit test suite in `frontend/components/__tests__/LiveDonationTicker.test.tsx`
+  + Extract `LiveDonationTicker` into `frontend/components/LiveDonationTicker.tsx` as a `React.memo`-wrapped component
+  + Move state rotation (`tickerIndex`) and `setInterval` loop internally inside `LiveDonationTicker`
+  + Remove parent `Home` page component re-renders on ticker ticks
+  + Add unit test suite in `frontend/components/__tests__/LiveDonationTicker.test.tsx`
 
 ### Features
 
+* **frontend:** refactor the admin verification queue table with `@tanstack/react-table`, sortable status/date/CO₂ columns, status filter pills, responsive mobile expansion, and server-driven pagination controls
+
 * **backend:** Redis-backed response caching middleware with request coalescing (GF-044, closes #149)
-  - New `cacheResponse(ttlSeconds, keyBuilder)` middleware factory with X-Cache: HIT|MISS|COALESCED headers
-  - Request coalescing (single-flight) via inflight promise Map to prevent cache stampede
-  - `invalidateCache(pattern)` for declarative cache invalidation on mutating writes
-  - Cache key convention: `cache:v1:<resource>:<params_hash>` for future migration
-  - Default TTLs: 60s leaderboard, 120s project listings, 300s global stats/impact, 600s map
-  - Cache invalidation on POST `/api/donations`, POST/PATCH `/api/projects`, POST `/api/profiles`
-  - New map route `GET /api/map` returning geo-located project data (10 min cache)
-  - New Prometheus metrics: `indigopay_cache_hits_total`, `indigopay_cache_misses_total`, `indigopay_cache_coalesced_total`
-  - Cache-Control: `public, max-age=..., stale-while-revalidate=...` headers on cached responses
-  - Graceful degradation when Redis is unavailable (pass-through to database, logged warning)
-  - 18 unit tests covering cache hit/miss, coalescing, invalidation, Redis failure, hash determinism
+  + New `cacheResponse(ttlSeconds, keyBuilder)` middleware factory with X-Cache: HIT|MISS|COALESCED headers
+  + Request coalescing (single-flight) via inflight promise Map to prevent cache stampede
+  + `invalidateCache(pattern)` for declarative cache invalidation on mutating writes
+  + Cache key convention: `cache:v1:<resource>:<params_hash>` for future migration
+  + Default TTLs: 60s leaderboard, 120s project listings, 300s global stats/impact, 600s map
+  + Cache invalidation on POST `/api/donations`, POST/PATCH `/api/projects`, POST `/api/profiles`
+  + New map route `GET /api/map` returning geo-located project data (10 min cache)
+  + New Prometheus metrics: `indigopay_cache_hits_total`,  `indigopay_cache_misses_total`,  `indigopay_cache_coalesced_total`
+  + Cache-Control: `public, max-age=..., stale-while-revalidate=...` headers on cached responses
+  + Graceful degradation when Redis is unavailable (pass-through to database, logged warning)
+  + 18 unit tests covering cache hit/miss, coalescing, invalidation, Redis failure, hash determinism
 * **contracts:** add a multi-source TWAP price oracle with freshness protection (closes #281)
-  - Authorised reporters submit timestamped positive prices to a 20-entry circular buffer
-  - `get_price` averages the newest 10 observations and preserves the IndigoPay oracle interface
-  - Prices older than 720 ledgers use an admin-configured fallback or fail clearly when none exists
-  - Added reporter management, overflow protection, events, and comprehensive oracle tests
+  + Authorised reporters submit timestamped positive prices to a 20-entry circular buffer
+  + `get_price` averages the newest 10 observations and preserves the IndigoPay oracle interface
+  + Prices older than 720 ledgers use an admin-configured fallback or fail clearly when none exists
+  + Added reporter management, overflow protection, events, and comprehensive oracle tests
 
 * **frontend:** implement advanced keyboard navigation, global keyboard shortcuts, route focus management, and skip links
-  - Add `frontend/hooks/useShortcuts.ts` — custom keyboard shortcuts hook with modifier checking and input field exclusion
-  - Add `frontend/components/GlobalSearchModal.tsx` — search overlay modal accessible via Cmd+K / Ctrl+K with full keyboard navigation (arrows, Enter, Escape) and focus trap
-  - Update `frontend/pages/_app.tsx` to handle page focus management, global shortcuts, and App Shell layout (SkipToContent + Navbar wrapper)
-  - Update `frontend/components/DonateForm.tsx` to support Space/Enter keys on donation amount preset buttons
-  - Update `frontend/components/LanguageSwitcher.tsx` to prevent propagation of the Escape key
-  - Add Jest unit tests for `useShortcuts` hook in `frontend/hooks/__tests__/useShortcuts.test.ts`
+  + Add `frontend/hooks/useShortcuts.ts` — custom keyboard shortcuts hook with modifier checking and input field exclusion
+  + Add `frontend/components/GlobalSearchModal.tsx` — search overlay modal accessible via Cmd+K / Ctrl+K with full keyboard navigation (arrows, Enter, Escape) and focus trap
+  + Update `frontend/pages/_app.tsx` to handle page focus management, global shortcuts, and App Shell layout (SkipToContent + Navbar wrapper)
+  + Update `frontend/components/DonateForm.tsx` to support Space/Enter keys on donation amount preset buttons
+  + Update `frontend/components/LanguageSwitcher.tsx` to prevent propagation of the Escape key
+  + Add Jest unit tests for `useShortcuts` hook in `frontend/hooks/__tests__/useShortcuts.test.ts`
 
 * **monitoring:** multi-window SLO burn-rate alerting with error budget dashboard (closes #240)
-  - Defined SLOs: donation recording (99.5%) and project listing (99.9%) over 30-day rolling windows
-  - Recording rules in `monitoring/recording-rules.yml` computing error ratios and budget remaining
-  - Multi-window burn-rate alerts: 2% in 1h (page), 5% in 6h (page), 10% in 3d (warn) for both SLOs
-  - Grafana dashboard: error budget gauges (green/yellow/red thresholds), burn-rate timeseries, top-5xx-routes table
-  - SLO definitions and burn-rate alert response runbook in `docs/performance.md`
-  - Prometheus `prometheus.yml` updated to load recording-rules.yml and alert-rules-routing.yml
+  + Defined SLOs: donation recording (99.5%) and project listing (99.9%) over 30-day rolling windows
+  + Recording rules in `monitoring/recording-rules.yml` computing error ratios and budget remaining
+  + Multi-window burn-rate alerts: 2% in 1h (page), 5% in 6h (page), 10% in 3d (warn) for both SLOs
+  + Grafana dashboard: error budget gauges (green/yellow/red thresholds), burn-rate timeseries, top-5xx-routes table
+  + SLO definitions and burn-rate alert response runbook in `docs/performance.md`
+  + Prometheus `prometheus.yml` updated to load recording-rules.yml and alert-rules-routing.yml
 
-* **backend,monitoring:** Postgres connection pool observability dashboard with adaptive pool sizing (closes #244)
-  - New `db_pool_max` Prometheus gauge tracks the current pool capacity
-  - Adaptive pool sizing: if saturated (all connections busy with waiters) for 60 s, increase max by 25 % up to `PG_MAX_HARD_CAP` (default 50)
-  - `parameterizeQuery()` helper replaces string and numeric literals with `$N` placeholders for PII-safe slow-query logging
-  - `extractQueryType()` classifies SQL queries as SELECT/INSERT/UPDATE/DELETE/WITH/OTHER
-  - Queries taking >1 s trigger EXPLAIN (ANALYZE, BUFFERS) fire-and-forget (gated by `DB_EXPLAIN_SLOW_QUERIES=true`)
-  - Grafana dashboard: connection pool health panels (heatmap, gauges for active/idle/waiting, pool max vs active timeseries, slow query count stat)
-  - New alert rules: `DBPoolSaturated` (warn, waiting > 0 for 5 m), `DBPoolExhausted` (page, all connections busy + waiters for 10 m with PagerDuty routing)
-  - 26 new unit tests (16 pool, 10 metrics)
+* **backend, monitoring:** Postgres connection pool observability dashboard with adaptive pool sizing (closes #244)
+  + New `db_pool_max` Prometheus gauge tracks the current pool capacity
+  + Adaptive pool sizing: if saturated (all connections busy with waiters) for 60 s, increase max by 25 % up to `PG_MAX_HARD_CAP` (default 50)
+  + `parameterizeQuery()` helper replaces string and numeric literals with `$N` placeholders for PII-safe slow-query logging
+  + `extractQueryType()` classifies SQL queries as SELECT/INSERT/UPDATE/DELETE/WITH/OTHER
+  + Queries taking >1 s trigger EXPLAIN (ANALYZE, BUFFERS) fire-and-forget (gated by `DB_EXPLAIN_SLOW_QUERIES=true`)
+  + Grafana dashboard: connection pool health panels (heatmap, gauges for active/idle/waiting, pool max vs active timeseries, slow query count stat)
+  + New alert rules: `DBPoolSaturated` (warn, waiting > 0 for 5 m),  `DBPoolExhausted` (page, all connections busy + waiters for 10 m with PagerDuty routing)
+  + 26 new unit tests (16 pool, 10 metrics)
 
-* **frontend,backend:** real-time transparency dashboard with SLO, business metrics, and donation geo-map (closes #253)
-  - New public dashboard page at `/transparency` with platform health banner, impact stat cards, live donation map, and recent donations feed
-  - Health banner polls `/api/readyz` every 30s displaying operational/degraded/outage status with expandable detail rows
-  - Impact overview with 4 animated stat cards (total donated, CO₂ offset, active projects, unique donors) using `AnimatedNumber`
-  - Enhanced `WorldMap` component supports real-time donation markers with pulse animations and fade-out effects
-  - SLO status panel with error-budget gauges for donation and project-listing SLOs, visible only when a wallet is connected
-  - Custom hooks (`useGlobalStats`, `useSLOData`) with configurable polling intervals
-  - New backend endpoint `GET /api/admin/metrics/slo` proxies Prometheus SLO recording rules with per-query error isolation
-  - 10 frontend unit tests (4 HealthBanner, 4 StatCard, 4 SLOStatusPanel) + 4 backend SLO endpoint tests
+* **frontend, backend:** real-time transparency dashboard with SLO, business metrics, and donation geo-map (closes #253)
+  + New public dashboard page at `/transparency` with platform health banner, impact stat cards, live donation map, and recent donations feed
+  + Health banner polls `/api/readyz` every 30s displaying operational/degraded/outage status with expandable detail rows
+  + Impact overview with 4 animated stat cards (total donated, CO₂ offset, active projects, unique donors) using `AnimatedNumber`
+  + Enhanced `WorldMap` component supports real-time donation markers with pulse animations and fade-out effects
+  + SLO status panel with error-budget gauges for donation and project-listing SLOs, visible only when a wallet is connected
+  + Custom hooks (`useGlobalStats`,  `useSLOData`) with configurable polling intervals
+  + New backend endpoint `GET /api/admin/metrics/slo` proxies Prometheus SLO recording rules with per-query error isolation
+  + 10 frontend unit tests (4 HealthBanner, 4 StatCard, 4 SLOStatusPanel) + 4 backend SLO endpoint tests
 
 * **frontend:** implement Playwright end-to-end test suite covering critical user journeys (GF-052, closes #110)
-  - Set up Playwright configuration in `playwright.config.ts` with Next.js dev server and Chrome browser projects
-  - Implement mock fixtures for Freighter wallet injection (`freighter.ts`), Horizon API/Soroban RPC responses (`horizon.ts`), and backend REST endpoints (`api.ts`)
-  - Implement E2E specs for (1) browse projects → donate XLM (`donation.spec.ts`), (2) wallet connect → view dashboard (`dashboard.spec.ts`), and (3) admin login → platform analytics (`admin-analytics.spec.ts`)
-  - Set up GitHub Actions CI integration for automated E2E test runs
+  + Set up Playwright configuration in `playwright.config.ts` with Next.js dev server and Chrome browser projects
+  + Implement mock fixtures for Freighter wallet injection (`freighter.ts`), Horizon API/Soroban RPC responses (`horizon.ts`), and backend REST endpoints (`api.ts`)
+  + Implement E2E specs for (1) browse projects → donate XLM (`donation.spec.ts`), (2) wallet connect → view dashboard (`dashboard.spec.ts`), and (3) admin login → platform analytics (`admin-analytics.spec.ts`)
+  + Set up GitHub Actions CI integration for automated E2E test runs
 
-* **backend,frontend:** JWT refresh token rotation and session management for admin auth (GF-032, closes #87)
-  - Access tokens cut to 15 minutes and carry a `jti`; refresh tokens are opaque, DB-backed, and live 7 days
-  - New `refresh_tokens` and `token_blacklist` tables via migration 019
-  - `POST /api/admin/refresh` rotates the refresh token on every call; replaying a revoked token revokes its entire family
-  - `POST /api/admin/logout` revokes the session family and blacklists the access token's `jti` until natural expiry
-  - `GET /api/admin/sessions` lists active sessions; `POST /api/admin/sessions/:id/revoke` kills one
-  - Refresh token moved to an httpOnly, Secure, SameSite=Strict cookie scoped to `/api`; `/admin/refresh` and `/admin/logout` are exempt from csurf since the cookie is their only credential
-  - Hourly pg-boss cleanup cron (`blacklistCleanup`) purges expired rows from both tables (configurable via `BLACKLIST_CLEANUP_CRON`)
-  - Frontend: `adminAuth.ts` holds the access token in memory only, refreshes single-flight, and rehydrates the session on mount
-  - Rotation claims the presented token with a compare-and-swap, so two concurrent refreshes cannot both mint a successor
-  - Logout only blacklists tokens the server signed; the endpoint is unauthenticated, so decoding without verifying would let anyone write a chosen `jti` and expiry
-  - 36 backend tests (`admin.test.js`), 20 frontend tests (`adminAuth.test.ts`)
+* **backend, frontend:** JWT refresh token rotation and session management for admin auth (GF-032, closes #87)
+  + Access tokens cut to 15 minutes and carry a `jti`; refresh tokens are opaque, DB-backed, and live 7 days
+  + New `refresh_tokens` and `token_blacklist` tables via migration 019
+  + `POST /api/admin/refresh` rotates the refresh token on every call; replaying a revoked token revokes its entire family
+  + `POST /api/admin/logout` revokes the session family and blacklists the access token's `jti` until natural expiry
+  + `GET /api/admin/sessions` lists active sessions;  `POST /api/admin/sessions/:id/revoke` kills one
+  + Refresh token moved to an httpOnly, Secure, SameSite=Strict cookie scoped to `/api`;  `/admin/refresh` and `/admin/logout` are exempt from csurf since the cookie is their only credential
+  + Hourly pg-boss cleanup cron (`blacklistCleanup`) purges expired rows from both tables (configurable via `BLACKLIST_CLEANUP_CRON`)
+  + Frontend: `adminAuth.ts` holds the access token in memory only, refreshes single-flight, and rehydrates the session on mount
+  + Rotation claims the presented token with a compare-and-swap, so two concurrent refreshes cannot both mint a successor
+  + Logout only blacklists tokens the server signed; the endpoint is unauthenticated, so decoding without verifying would let anyone write a chosen `jti` and expiry
+  + 36 backend tests (`admin.test.js`), 20 frontend tests (`adminAuth.test.ts`)
 
 * **frontend:** admin login now shows the specific failure (`reason`) instead of the canonical per-code message, so a wrong password reads "Invalid credentials" rather than "Authentication required"
 
   **BREAKING**: `POST /api/admin/login` no longer returns `refreshToken` in the body and `expiresIn` is now 900; `POST /api/admin/refresh` reads the `refresh_token` cookie instead of a JSON body. Existing admin tokens are invalidated — admins must log in again.
 
-* **backend,frontend:** add Idempotency-Key support for donation recording (closes #148)
-  - Accept `Idempotency-Key` header (UUID v4) on `POST /api/donations`; store response and replay within 24 hours
-  - New `idempotency_keys` table via migration 016 with index on `created_at`
-  - Hourly pg-boss cleanup cron (`idempotencyCleanup`) purges expired keys (configurable via `IDEMPOTENCY_CLEANUP_CRON`)
-  - Frontend: `DonateForm` and `bridge` generate `crypto.randomUUID()` per donation attempt
-  - Documented in OpenAPI spec with 200 replay response
-  - 11 new tests: 5 unit (donations), 8 unit (cleanup), 3 integration (testcontainers)
+* **backend, frontend:** add Idempotency-Key support for donation recording (closes #148)
+  + Accept `Idempotency-Key` header (UUID v4) on `POST /api/donations`; store response and replay within 24 hours
+  + New `idempotency_keys` table via migration 016 with index on `created_at`
+  + Hourly pg-boss cleanup cron (`idempotencyCleanup`) purges expired keys (configurable via `IDEMPOTENCY_CLEANUP_CRON`)
+  + Frontend: `DonateForm` and `bridge` generate `crypto.randomUUID()` per donation attempt
+  + Documented in OpenAPI spec with 200 replay response
+  + 11 new tests: 5 unit (donations), 8 unit (cleanup), 3 integration (testcontainers)
 
 * **docs:** add CONTRIBUTORS.md to credit community work (GF-015, closes #64)
 
 * **frontend:** build admin audit log viewer with filtering and CSV export (GF-028, closes #83)
-  - Add `/admin/audit` page with filterable, paginated audit log table
-  - Add `AuditLogTable.tsx` — reusable component with filters (actor, action, target, date range, full-text search), pagination (50/page), and CSV export
-  - Add "Audit Log" link to admin navigation sidebar
-  - Fetch distinct action values from stats API for the action filter dropdown
-  - CSV export downloads via `GET /api/admin/audit-log/export/csv` with current filters
-  - 15 frontend test cases covering all filter states, pagination, export, loading/error/empty states
+  + Add `/admin/audit` page with filterable, paginated audit log table
+  + Add `AuditLogTable.tsx` — reusable component with filters (actor, action, target, date range, full-text search), pagination (50/page), and CSV export
+  + Add "Audit Log" link to admin navigation sidebar
+  + Fetch distinct action values from stats API for the action filter dropdown
+  + CSV export downloads via `GET /api/admin/audit-log/export/csv` with current filters
+  + 15 frontend test cases covering all filter states, pagination, export, loading/error/empty states
 
 * **frontend:** build donor impact certificate with shareable OG social preview (GF-022, closes #79)
-  - Add server-rendered OG image endpoint `/api/og/donor/[publicKey]` using `@vercel/og` (1200×630px, Edge Runtime)
-  - Generate styled impact card with donor name, XLM donated, badge tier, CO₂ offset, and CTA
-  - Add `ShareButton.tsx` — reusable component with Twitter/X, LinkedIn, and copy-link buttons with hover states
-  - Update donor profile page with `og:image`, `twitter:card=summary_large_image`, and dynamic share text
-  - Cache OG images for 1 hour via `Cache-Control: public, max-age=3600`
+  + Add server-rendered OG image endpoint `/api/og/donor/[publicKey]` using `@vercel/og` (1200×630px, Edge Runtime)
+  + Generate styled impact card with donor name, XLM donated, badge tier, CO₂ offset, and CTA
+  + Add `ShareButton.tsx` — reusable component with Twitter/X, LinkedIn, and copy-link buttons with hover states
+  + Update donor profile page with `og:image`,  `twitter:card=summary_large_image`, and dynamic share text
+  + Cache OG images for 1 hour via `Cache-Control: public, max-age=3600`
 
 * **backend:** implement Soroban RPC retry with exponential backoff and circuit breaker (GF-043, closes #100)
-  - Add `backend/src/services/circuitBreaker.js` — reusable `CircuitBreaker` class (CLOSED / HALF_OPEN / OPEN state machine, configurable `failureThreshold` and `resetTimeout`)
-  - Export `indigopay_soroban_circuit_breaker_state` Prometheus Gauge (0=closed, 1=half_open, 2=open)
-  - Update `backend/src/services/stellar.js` with `withRetry()` (exponential backoff: 100ms → 200ms → 400ms, max 3 retries env-configurable via `SOROBAN_RPC_MAX_RETRIES`) and `rpcBreaker` circuit breaker wrapping all Soroban RPC calls
-  - Export `indigopay_soroban_rpc_retries_total` Prometheus Counter
-  - Update `backend/src/routes/readiness.js` to include `soroban_rpc` health check in `/api/readyz` response (reports `ok` or `degraded`)
-  - Add 33-test suite `backend/src/services/circuitBreaker.test.js` covering state machine, `isRetryable` classification, retry logic, circuit breaker open/half-open/closed transitions, and Prometheus metrics
+  + Add `backend/src/services/circuitBreaker.js` — reusable `CircuitBreaker` class (CLOSED / HALF_OPEN / OPEN state machine, configurable `failureThreshold` and `resetTimeout`)
+  + Export `indigopay_soroban_circuit_breaker_state` Prometheus Gauge (0=closed, 1=half_open, 2=open)
+  + Update `backend/src/services/stellar.js` with `withRetry()` (exponential backoff: 100ms → 200ms → 400ms, max 3 retries env-configurable via `SOROBAN_RPC_MAX_RETRIES`) and `rpcBreaker` circuit breaker wrapping all Soroban RPC calls
+  + Export `indigopay_soroban_rpc_retries_total` Prometheus Counter
+  + Update `backend/src/routes/readiness.js` to include `soroban_rpc` health check in `/api/readyz` response (reports `ok` or `degraded`)
+  + Add 33-test suite `backend/src/services/circuitBreaker.test.js` covering state machine,  `isRetryable` classification, retry logic, circuit breaker open/half-open/closed transitions, and Prometheus metrics
 
 ---
 
 # 1.0.0 (2026-07-12)
-
 
 ### Bug Fixes
 
@@ -159,7 +160,6 @@
 * resolve remaining CI failures (gitleaks, trivy, contracts) ([ec7f27a](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/ec7f27aaf91a1c8e5d789dab60e12a46eed210a4))
 * resolve Soroban Contracts CI failures - remove untracked path-patch, suppress deprecated Events::publish, fix test bugs ([a4cc10a](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/a4cc10ab7214491cde230daf6df05ae6e56ff025))
 
-
 ### Features
 
 * **backend:** add /metrics scrape endpoint with bearer auth ([b433759](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/b433759bb041874426ad0c5208f42a716870c1de))
@@ -172,7 +172,7 @@
 * **backend:** split health into liveness and readiness ([9f248b4](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/9f248b4f195a50bb83bbc6769d23f7acda896501))
 * **backend:** webhook delivery + attempt + duration Prometheus counters ([ba2f32b](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/ba2f32b50a7b925e24144ea71c97f0cb98932a4b))
 * **backend:** webhook delivery queue with pg-boss, DLQ, GitHub-style signing ([2a2b586](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/2a2b58635f002eb34bb653b43767d6c4a50b5f95))
-* **backend:** webhook signing helper with GitHub-style t=...,v1=... + replay window ([0b77240](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/0b772402ccbc057fbb81fe5fa451613aec5d0130))
+* **backend:** webhook signing helper with GitHub-style t=..., v1=... + replay window ([0b77240](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/0b772402ccbc057fbb81fe5fa451613aec5d0130))
 * **backend:** wire webhookQueue.start into boot + lifecycle shutdown ([e310cdb](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/e310cdb5f2f9f54d81cef97098d95330af36a059))
 * **ci:** monthly restore-drill workflow that pulls latest backup and asserts row counts ([fe1af2c](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/fe1af2cbdd37d928bbf4da42091e11b928923389))
 * **ci:** SBOM generation with anchore/sbom-action, uploads to GitHub dependency graph ([d70d0a6](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/d70d0a6b869a908e269881e1196e9b524ab56c6f))
@@ -222,7 +222,6 @@
 * update frontend project components with indigo palette ([6516483](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/6516483c5e5b09bfeeb40e51588b83794547c591))
 * update frontend UI components with indigo design ([b04aca1](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/b04aca1bfc9837347535b5f5dc9d1a6091684274))
 * update mobile app theme with indigo palette ([d6da922](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/commit/d6da92249ea6ea07a1ee07e4e896ca9577da5a8d)), closes [#227239](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/issues/227239) [#5a7a5a](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/issues/5a7a5a) [#4F46E5](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/issues/4F46E5) [#818CF8](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/issues/818CF8) [#0A0A1A](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/issues/0A0A1A) [#FAFAFE](https://github.com/Stellar-IndigoPay/Stellar-IndigoPay/issues/FAFAFE)
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -230,138 +229,140 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Comprehensive Soroban contract fuzzing harness with 7 property-based tests (#239)
-- ContractAction-based action-sequence fuzzing for holistic invariant checking
-- Fuzz corpus infrastructure with replayable regression tests
-- Property tests: donation totals consistency, badge monotonicity, donor count accuracy,
-  global stats consistency, vote integrity, CO₂ offset monotonicity, pause/resume idempotency
-- CI fuzz job with 60-second timeout and corpus regression step
-- FUZZ_FINDINGS.md documenting all discoveries from fuzz testing
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+* Comprehensive Soroban contract fuzzing harness with 7 property-based tests (#239)
+* ContractAction-based action-sequence fuzzing for holistic invariant checking
+* Fuzz corpus infrastructure with replayable regression tests
+* Property tests: donation totals consistency, badge monotonicity, donor count accuracy, 
+  global stats consistency, vote integrity, CO₂ offset monotonicity, pause/resume idempotency
+* CI fuzz job with 60-second timeout and corpus regression step
+* FUZZ_FINDINGS.md documenting all discoveries from fuzz testing
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
 
-- **Webhook reliability** — `webhookQueue` worker backed by pg-boss with a
+* **Webhook reliability** — `webhookQueue` worker backed by pg-boss with a
   6-attempt exponential backoff (30s → 2m → 10m → 30m → 2h → 6h) and a
-  dead-letter table (`webhook_dlq`) for permanent failures. Replaces the
+  dead-letter table ( `webhook_dlq` ) for permanent failures. Replaces the
   old fire-and-forget `fetch` with a durable retry / DLQ pipeline.
-- **Webhook signing** — `webhookSign` helper implementing GitHub-style
-  `t=…,v1=…` HMAC-SHA256 with a 5-minute replay window and constant-time
+* **Webhook signing** — `webhookSign` helper implementing GitHub-style
+`t=…,v1=…` HMAC-SHA256 with a 5-minute replay window and constant-time
   comparison. Idempotency enforced by `INSERT … ON CONFLICT DO UPDATE
-RETURNING id, (xmax=0) AS inserted` on `webhook_deliveries`.
-- **Webhook Prometheus metrics** — `webhook_deliveries_total`,
-  `webhook_delivery_attempts_total`, `webhook_delivery_duration_seconds`,
-  plus `ai_summary_tokens_total`, `ai_summary_cost_usd_total`,
-  `ai_summary_latency_seconds`, and `ai_summary_outcomes_total`.
-- New database tables: `webhook_deliveries`, `webhook_dlq`,
-  `prompt_versions`, and `ai_summary_calls`.
-- **Soroban trust model** — 48h upgrade timelock
-  (`propose_upgrade` / `execute_upgrade` / `cancel`), contract-level pause
-  (`pause_contract` / `unpause_contract`), and two-step admin transfer
-  (`transfer_admin` / `accept_admin` / `cancel`). Full threat model
+RETURNING id, (xmax=0) AS inserted ` on ` webhook_deliveries`.
+* **Webhook Prometheus metrics** — `webhook_deliveries_total`, 
+`webhook_delivery_attempts_total` , `webhook_delivery_duration_seconds` , 
+  plus `ai_summary_tokens_total` , `ai_summary_cost_usd_total` , 
+`ai_summary_latency_seconds` , and `ai_summary_outcomes_total` .
+* New database tables: `webhook_deliveries`, `webhook_dlq`, 
+`prompt_versions` , and `ai_summary_calls` .
+* **Soroban trust model** — 48h upgrade timelock
+  ( `propose_upgrade` / `execute_upgrade` / `cancel` ), contract-level pause
+  ( `pause_contract` / `unpause_contract` ), and two-step admin transfer
+  ( `transfer_admin` / `accept_admin` / `cancel` ). Full threat model
   documented in `contracts/indigopay-contract/SECURITY.md` and
-  `UPGRADE.md`.
-- Backend observability env vars documented in `.env.example`
-  (`METRICS_BEARER_TOKEN`, `INDEXER_*`, `SENTRY_*`, etc.).
-- 32 Jest cases covering metrics, lifecycle, requestId, health, and
-  readiness in `backend/__tests__/`.
+`UPGRADE.md` .
+* Backend observability env vars documented in `.env.example`
+  ( `METRICS_BEARER_TOKEN` , `INDEXER_*` , `SENTRY_*` , etc.).
+* 32 Jest cases covering metrics, lifecycle, requestId, health, and
+  readiness in `backend/__tests__/` .
 
 ### Changed
 
-- `backend/src/routes/webhook.js` defers delivery to `webhookQueue`;
+* `backend/src/routes/webhook.js` defers delivery to `webhookQueue`; 
   the public route surface is preserved so existing partners keep working.
-- `backend/src/server.js` wires `webhookQueue.start` into boot and
+* `backend/src/server.js` wires `webhookQueue.start` into boot and
   registers a lifecycle shutdown hook to drain in-flight jobs on SIGTERM.
-- Soroban contracts: extracted a shared `require_admin` helper and
+* Soroban contracts: extracted a shared `require_admin` helper and
   unified the admin panic message across all admin-only entry points.
-- `docs/README.md` indexes every document by audience (users, developers,
+* `docs/README.md` indexes every document by audience (users, developers, 
   operators, contributors).
 
 ### Fixed
 
-- `webhook.js` retry scheduler now uses `boss.send(..., { startAfter })`
+* `webhook.js` retry scheduler now uses `boss.send(..., { startAfter })`
   instead of relying on the implicit loop. A deduped enqueue returns the
   existing `deliveryId` rather than silently re-creating a row.
-- `backend/src/services/indexerService` exposes a `stop()` method so the
+* `backend/src/services/indexerService` exposes a `stop()` method so the
   Stellar Horizon stream is closed cleanly on SIGTERM.
 
-- **scripts:** ensure `scripts/setup-dev.sh` installs `mobile` and `extension` dependencies (fix README mismatch)
+* **scripts:** ensure `scripts/setup-dev.sh` installs `mobile` and `extension` dependencies (fix README mismatch)
 
-- **NetworkPolicies** — default-deny for the `indigopay` namespace plus
+* **NetworkPolicies** — default-deny for the `indigopay` namespace plus
   explicit allow policies for ingress → backend, backend → postgres +
   kube-dns, backend → redis, backend → Stellar Horizon / Soroban RPC /
-  Anthropic / Sentry, Prometheus → backend `/metrics`, and frontend →
+  Anthropic / Sentry, Prometheus → backend `/metrics` , and frontend →
   backend (the last one closes the default-deny gap for the Next.js client).
-- **Autoscaling** — `HorizontalPodAutoscaler` for backend and frontend
+* **Autoscaling** — `HorizontalPodAutoscaler` for backend and frontend
   (min 2, max 10, CPU 70% / memory 80%) and `PodDisruptionBudget` with
-  `minAvailable: 1` for both, mirrored in the Helm chart via
-  `values.autoscaling` and `values.pdb`.
-- **Helm chart** — new `_helpers.tpl` (`backendName`, `frontendName`,
-  `commonLabels`) and `values.yaml` blocks for autoscaling and PDB so
-  the chart actually renders end-to-end (`helm template` was previously
+`minAvailable: 1` for both, mirrored in the Helm chart via
+`values.autoscaling` and `values.pdb` .
+* **Helm chart** — new `_helpers.tpl` (`backendName`,  `frontendName`, 
+`commonLabels` ) and `values.yaml` blocks for autoscaling and PDB so
+  the chart actually renders end-to-end ( `helm template` was previously
   broken by missing helpers).
-- **Secrets management** — `k8s/secret.example.yaml` is the checked-in
-  template; the real `k8s/secret.yaml` is gitignored;
-  `.github/workflows/secrets-lint.yml` fails CI on placeholder leaks in
-  `k8s/`, `helm/`, and `monitoring/`. The template was rewritten to use
+* **Secrets management** — `k8s/secret.example.yaml` is the checked-in
+  template; the real `k8s/secret.yaml` is gitignored; 
+`.github/workflows/secrets-lint.yml` fails CI on placeholder leaks in
+`k8s/` , `helm/` , and `monitoring/` . The template was rewritten to use
   lint-safe `__LIKE_THIS__` markers so the lint does not trip on it.
-- **External Secrets** — `ExternalSecret` + `SecretStore` templates for
+* **External Secrets** — `ExternalSecret` + `SecretStore` templates for
   AWS Secrets Manager, an IRSA `ServiceAccount` stub, and full setup
-  documentation (`docs/external-secrets.md`).
+  documentation ( `docs/external-secrets.md` ).
 
-- **Disaster recovery** — explicit RTO / RPO table, failure modes,
+* **Disaster recovery** — explicit RTO / RPO table, failure modes, 
   secret-compromise procedure, and multi-region roadmap
-  (`docs/disaster-recovery.md`).
-- **Restore runbook** — pre-flight → provision → cutover → post-restore
-  → dry-run procedure (`docs/restore-runbook.md`).
-- **Restore-drill workflow** — monthly CI job that pulls the latest
+  ( `docs/disaster-recovery.md` ).
+* **Restore runbook** — pre-flight → provision → cutover → post-restore
+  → dry-run procedure ( `docs/restore-runbook.md` ).
+* **Restore-drill workflow** — monthly CI job that pulls the latest
   backup and asserts table row counts
-  (`.github/workflows/restore-drill.yml`).
-- **Alert routing** — Alertmanager with PagerDuty + Slack + business
+  ( `.github/workflows/restore-drill.yml` ).
+* **Alert routing** — Alertmanager with PagerDuty + Slack + business
   hours override + inhibition rules
-  (`monitoring/alertmanager-routing.yml`), plus routing-aware alert
-  rules (`BackendDown`, `BackupMissed`, `RestoreDrillFailed`).
-- **Image hardening** — `backend/Dockerfile` and `frontend/Dockerfile`
+  ( `monitoring/alertmanager-routing.yml` ), plus routing-aware alert
+  rules ( `BackendDown` , `BackupMissed` , `RestoreDrillFailed` ).
+* **Image hardening** — `backend/Dockerfile` and `frontend/Dockerfile`
   pinned to `node:20.18.1-alpine` LTS; switched to `npm ci --omit=dev`
+
   for reproducible installs.
-- **SBOM** — `anchore/sbom-action` uploads a Software Bill of Materials
+* **SBOM** — `anchore/sbom-action` uploads a Software Bill of Materials
   to the GitHub dependency graph on every push.
-- **Image scan** — Trivy scan failing on CRITICAL / HIGH with fix
+* **Image scan** — Trivy scan failing on CRITICAL / HIGH with fix
   available.
-- **Image signing** — cosign keyless signing on release tags.
-- **GitOps** — ArgoCD `Application` manifest for chart-driven
+* **Image signing** — cosign keyless signing on release tags.
+* **GitOps** — ArgoCD `Application` manifest for chart-driven
   reconciliation, Argo Rollouts stepped canary strategy with Prometheus
   success-rate analysis (header corrected to reflect default stepped
   mode rather than traffic-split canary).
-- **Observability** — Prometheus + Grafana + Alertmanager stack with
+* **Observability** — Prometheus + Grafana + Alertmanager stack with
   persistent volumes; `ServiceMonitor` + metrics port + readiness /
   liveness probes + metrics secret wiring for the backend; backend
-  `indexerService.stop()` for clean shutdown.
+`indexerService.stop()` for clean shutdown.
 
 ### Removed
 
-- `docs/openapi.yml` — stale duplicate of `docs/api/openapi.yaml`, which
+* `docs/openapi.yml` — stale duplicate of `docs/api/openapi.yaml`, which
   is the canonical OpenAPI 3.0.3 spec served by `swagger-ui-express` at
-  `/api/docs` in development.
+`/api/docs` in development.
 
 ## [1.0.0] - 2025-01-01
 
 ### Added
 
-- Wallet Connect via Freighter browser extension.
-- Browse verified climate projects with impact metrics.
-- Direct on-chain XLM donations to project wallets.
-- Soroban smart contract for donation and CO₂ offset tracking.
-- Donor leaderboard ranked by total XLM given.
-- Project updates — organisations post progress updates to donors.
-- CI/CD pipelines (lint, type-check, test, build, e2e, DAST).
-- Docker Compose development environment with hot reload.
-- Gitleaks secret scanning in CI.
-- Backend API with Express and PostgreSQL.
-- Mobile app (React Native / Expo).
-- Browser extension.
-- Helm chart for Kubernetes deployment.
+* Wallet Connect via Freighter browser extension.
+* Browse verified climate projects with impact metrics.
+* Direct on-chain XLM donations to project wallets.
+* Soroban smart contract for donation and CO₂ offset tracking.
+* Donor leaderboard ranked by total XLM given.
+* Project updates — organisations post progress updates to donors.
+* CI/CD pipelines (lint, type-check, test, build, e2e, DAST).
+* Docker Compose development environment with hot reload.
+* Gitleaks secret scanning in CI.
+* Backend API with Express and PostgreSQL.
+* Mobile app (React Native / Expo).
+* Browser extension.
+* Helm chart for Kubernetes deployment.
