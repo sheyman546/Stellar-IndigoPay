@@ -27,7 +27,7 @@ async function start(io) {
 
     // Idempotency: check log – if already completed, skip
     const logRes = await pool.query(
-      `SELECT status FROM impact_recalculation_log WHERE donation_id = $1`,
+      "SELECT status FROM impact_recalculation_log WHERE donation_id = $1",
       [donationId]
     );
     if (logRes.rows[0] && logRes.rows[0].status === "completed") {
@@ -126,7 +126,7 @@ async function start(io) {
 
       // Mark log as completed
       await pool.query(
-        `UPDATE impact_recalculation_log SET status = 'completed', error = NULL WHERE donation_id = $1`,
+        "UPDATE impact_recalculation_log SET status = 'completed', error = NULL WHERE donation_id = $1",
         [donationId]
       );
 
@@ -136,7 +136,7 @@ async function start(io) {
     } catch (err) {
       // Record failure
       await pool.query(
-        `UPDATE impact_recalculation_log SET status = 'failed', error = $1 WHERE donation_id = $2`,
+        "UPDATE impact_recalculation_log SET status = 'failed', error = $1 WHERE donation_id = $2",
         [err.message, donationId]
       );
       throw err; // let pg‑boss retry per its config

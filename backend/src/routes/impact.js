@@ -199,8 +199,8 @@ router.get("/donor/:publicKey", cacheResponse(300, (req) => `cache:v1:impact:don
   }
 });
 
-    validateKey(req.params.publicKey);
 
+<<<<<<< HEAD
     const totalsResult = await pool.query(
       `SELECT
         COALESCE(SUM(d.amount_xlm), 0) AS "totalDonatedXLM",
@@ -254,5 +254,7 @@ router.get("/donor/:publicKey", cacheResponse(300, (req) => `cache:v1:impact:don
     next(e);
   }
 });
+=======
+>>>>>>> 287e5d1 (fix lint errors)
 
 module.exports = router;
