@@ -211,14 +211,8 @@ mod tests {
         let msg_hash = BytesN::from_array(&env, &[0u8; 32]);
         let amount: i128 = 5_000_000;
 
-        let donation_id = client.donate_stealth(
-            &donor,
-            &token,
-            &ephem,
-            &project,
-            &amount,
-            &msg_hash,
-        );
+        let donation_id =
+            client.donate_stealth(&donor, &token, &ephem, &project, &amount, &msg_hash);
 
         assert_eq!(donation_id, 1u64);
 
