@@ -50,7 +50,7 @@ impl DonationContract {
         );
 
         let token_client = token::Client::new(&env, &token);
-        token_client.transfer(&sender, &env.current_contract_address(), &amount);
+        token_client.transfer(&sender, env.current_contract_address(), &amount);
 
         let donation_id = get_stealth_counter(&env) + 1;
         set_stealth_counter(&env, donation_id);
