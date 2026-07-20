@@ -2,6 +2,14 @@
 
 ### Performance
 
+* **frontend:** optimize Core Web Vitals with next/image, next/font, and bundle splitting (closes #261)
+  - Migrate project images in `ProjectCard.tsx` and `projects/[id].tsx` to `next/image` with proper `sizes`, `priority`, and lazy loading
+  - Configure `next/font` with Inter and Plus Jakarta Sans via CSS variables, removing render-blocking Google Fonts CSS
+  - Implement `next/dynamic` for WorldMap (transparency.tsx, impact.tsx) and ProjectComparison (projects/index.tsx)
+  - Add `@next/bundle-analyzer` with `ANALYZE=true` flag for bundle analysis
+  - Add CI bundle size budget check: fail if any chunk exceeds 250KB first-load JS
+  - Add image domain whitelist (`remotePatterns`) and AVIF/WebP formats in next.config.mjs
+  - Mock `next/image` in jest.setup.ts for test compatibility
 * **frontend:** isolate LiveDonationTicker component to eliminate 3.5s page-wide re-render cycle
   - Extract `LiveDonationTicker` into `frontend/components/LiveDonationTicker.tsx` as a `React.memo`-wrapped component
   - Move state rotation (`tickerIndex`) and `setInterval` loop internally inside `LiveDonationTicker`

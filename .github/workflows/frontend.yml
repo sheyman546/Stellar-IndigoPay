@@ -160,11 +160,43 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        run: ANALYZE=false npm run build
         env:
           NEXT_PUBLIC_STELLAR_NETWORK: testnet
           NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
           NEXT_PUBLIC_API_URL: http://localhost:4000
+
+      - name: Bundle analysis (ANALYZE=true)
+        working-directory: frontend
+        run: ANALYZE=true npm run build
+        env:
+          NEXT_PUBLIC_STELLAR_NETWORK: testnet
+          NEXT_PUBLIC_HORIZON_URL: https://horizon-testnet.stellar.org
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+      - name: Check bundle size budget
+        working-directory: frontend
+        run: |
+          echo "Checking first-load JS bundle sizes…"
+          # Check all JS chunks (pages/ routes + shared chunks) and flag any that exceed 250KB
+          MAX_SIZE=256000
+          EXCEEDED=0
+          if [ -d .next/static/chunks ]; then
+            for chunk in .next/static/chunks/*.js .next/static/chunks/pages/*.js 2>/dev/null; do
+              if [ -f "$chunk" ]; then
+                SIZE=$(stat -c%s "$chunk" 2>/dev/null || echo 0)
+                if [ "$SIZE" -gt "$MAX_SIZE" ]; then
+                  echo "::warning file=$chunk::Chunk $(basename "$chunk") is $SIZE bytes (exceeds ${MAX_SIZE} byte budget)"
+                  EXCEEDED=$((EXCEEDED + 1))
+                fi
+              fi
+            done
+          fi
+          if [ "$EXCEEDED" -gt 0 ]; then
+            echo "::error title=Bundle size budget exceeded::${EXCEEDED} chunk(s) exceed the 250KB first-load JS budget"
+            exit 1
+          fi
+          echo "All chunks within 250KB budget."
 
   storybook:
     name: Storybook Build
