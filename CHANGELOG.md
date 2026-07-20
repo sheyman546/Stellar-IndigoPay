@@ -128,6 +128,16 @@
   - Update `backend/src/routes/readiness.js` to include `soroban_rpc` health check in `/api/readyz` response (reports `ok` or `degraded`)
   - Add 33-test suite `backend/src/services/circuitBreaker.test.js` covering state machine, `isRetryable` classification, retry logic, circuit breaker open/half-open/closed transitions, and Prometheus metrics
 
+### Fixed
+
+* **ci:** add `timeout-minutes` to all CI jobs across backend (15 min), frontend (5–15 min per job), and contracts (10–30 min per job) to prevent hanging builds from consuming 6 hours of runner time
+* **backend:** increase WebSocket event deadline from 500ms to 2000ms in `donations.socket.test.js` to eliminate flaky CI failures caused by Socket.IO delivery latency in Docker environments
+* **frontend:** resolve `react-hooks/exhaustive-deps` lint warnings in `RecurringDonationsTab.tsx` and `WorldMap.tsx` — wrap `fetchRecurring` in `useCallback` and replace `activeDonationMarkers` state dependency with a `useRef<Set<string>>` for deduplication
+* **contracts:** add missing `VoteDelegation(Address)` and `DelegatedWeight(Address)` variants to `DataKey` enum, fixing 12+ compilation errors from partially-merged quadratic voting feature
+* **contracts:** add missing `disputed: false` field to all `Milestone` initializers in escrow-contract integration tests (`create_job.rs`, `dispute.rs`, `common/mod.rs`), fixing 10 compilation errors
+* **contracts:** repair `fuzz_tests.rs` compilation — add `extern crate alloc` + `Ledger` import, replace strategy `.clone()` with `.boxed()`, fix `Vote` variant field name, and fix `RegisterProject` action cloning
+* **contracts:** fix `test_execute_recurring_badge_progression` token allowance — bump approved amount from 1500 to 1503 XLM to account for keeper incentives deducted by `execute_recurring`
+
 ---
 
 # 1.0.0 (2026-07-12)
