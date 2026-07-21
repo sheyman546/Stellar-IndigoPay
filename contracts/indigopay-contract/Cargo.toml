@@ -29,6 +29,7 @@ campaign = []
 donation = []
 zk = []
 vesting = []
+fees = []
 
 [profile.release]
 lto = true

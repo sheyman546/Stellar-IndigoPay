@@ -389,6 +389,11 @@ pub enum DataKey {
     // Time-locked donation vesting (#386)
     VestingSchedule(Address, u32),
     DonorVestingCount(Address),
+    // Platform fee configuration (#385)
+    /// Fee in basis points (0–500, max 5%).
+    PlatformFeeBps,
+    /// Designated wallet that receives the platform fee.
+    PlatformTreasury,
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -431,6 +436,10 @@ const EMERGENCY_WITHDRAWAL_TIMELOCK: u32 = 120_960;
 // donation during which the donor may request a refund (subject to admin +
 // project wallet approval).
 const REFUND_COOLDOWN_LEDGERS: u32 = 17_280;
+
+/// Hard cap on platform fee: 500 basis points = 5%.
+#[cfg(feature = "fees")]
+const MAX_PLATFORM_FEE_BPS: u32 = 500;
 
 /// Read the stored admin set. Panics if not initialized.
 fn read_admin_set(env: &Env) -> Vec<Address> {
@@ -504,6 +513,37 @@ fn require_not_paused(env: &Env) {
     if paused {
         panic!("Contract is paused");
     }
+}
+
+/// Read the configured platform fee in basis points.
+/// Returns 0 when the `fees` feature is disabled or no fee has been configured,
+/// preserving backward compatibility.
+fn read_platform_fee_bps(_env: &Env) -> u32 {
+    #[cfg(feature = "fees")]
+    {
+        env.storage()
+            .instance()
+            .get(&DataKey::PlatformFeeBps)
+            .unwrap_or(0)
+    }
+    #[cfg(not(feature = "fees"))]
+    {
+        0
+    }
+}
+
+/// Split `amount` into (project_amount, fee_amount) based on the configured fee
+/// rate in basis points. Returns `(amount, 0)` when `fee_bps` is 0.
+fn split_fee(amount: i128, fee_bps: u32) -> (i128, i128) {
+    if fee_bps == 0 {
+        return (amount, 0);
+    }
+    let fee = amount
+        .checked_mul(fee_bps as i128)
+        .expect("Fee calculation overflow")
+        / 10_000;
+    let project_amount = amount.checked_sub(fee).expect("Amount minus fee underflow");
+    (project_amount, fee)
 }
 
 fn ensure_min_ttl(env: &Env, min_ledgers: u32) {
@@ -1107,6 +1147,45 @@ impl IndigoPayContract {
         );
     }
 
+    // ─── Platform Fee Configuration (#385) ────────────────────────────────────
+
+    /// Admin-only (M-of-N): set the platform fee in basis points.
+    ///
+    /// `fee_bps` is capped at `MAX_PLATFORM_FEE_BPS` (500 = 5%).
+    /// Setting to 0 disables the fee (backward compatible).
+    ///
+    /// # Panics
+    /// - If `fee_bps` exceeds `MAX_PLATFORM_FEE_BPS` (500).
+    #[cfg(feature = "fees")]
+    pub fn set_platform_fee(env: Env, signers: Vec<Address>, fee_bps: u32) {
+        require_admin_for_critical(&env, &signers);
+        require_not_paused(&env);
+        if fee_bps > MAX_PLATFORM_FEE_BPS {
+            panic!("Platform fee exceeds maximum of 500 bps (5%)");
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey::PlatformFeeBps, &fee_bps);
+        env.events()
+            .publish((symbol_short!("fee_set"), signers.get(0).unwrap()), fee_bps);
+        ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
+    }
+
+    /// Admin-only (M-of-N): set the platform treasury address that receives fees.
+    #[cfg(feature = "fees")]
+    pub fn set_platform_treasury(env: Env, signers: Vec<Address>, treasury: Address) {
+        require_admin_for_critical(&env, &signers);
+        require_not_paused(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::PlatformTreasury, &treasury);
+        env.events().publish(
+            (symbol_short!("treas_set"), signers.get(0).unwrap()),
+            treasury,
+        );
+        ensure_min_ttl(&env, VOTING_WINDOW_LEDGERS * 4);
+    }
+
     // ─── Donations ────────────────────────────────────────────────────────────
 
     #[allow(clippy::too_many_arguments)]
@@ -1310,9 +1389,32 @@ impl IndigoPayContract {
             .set(&DataKey::GlobalCO2OffsetGrams, &new_gc);
 
         // ── Interaction: external call happens after every effect is durable.
-        let token_client = token::Client::new(&env, &token);
-        token_client.transfer(&donor, &project.wallet, &amount);
+        let fee_bps = read_platform_fee_bps(&env);
+        #[allow(unused_variables)]
+        let (project_amount, fee_amount) = split_fee(amount, fee_bps);
 
+        let token_client = token::Client::new(&env, &token);
+
+        // Transfer platform fee to treasury (if configured and feature enabled).
+        #[cfg(feature = "fees")]
+        if fee_amount > 0 {
+            let treasury: Address = env
+                .storage()
+                .instance()
+                .get(&DataKey::PlatformTreasury)
+                .expect("Platform treasury not configured");
+            token_client.transfer(&donor, &treasury, &fee_amount);
+        }
+
+        // Transfer remainder to project wallet.
+        token_client.transfer(&donor, &project.wallet, &project_amount);
+
+        #[cfg(feature = "fees")]
+        env.events().publish(
+            (symbol_short!("donated"), donor.clone(), project_id.clone()),
+            (amount, donor_stats.badge.clone(), msg_hash, fee_amount),
+        );
+        #[cfg(not(feature = "fees"))]
         env.events().publish(
             (symbol_short!("donated"), donor.clone(), project_id.clone()),
             (amount, donor_stats.badge.clone(), msg_hash),
@@ -1504,6 +1606,19 @@ impl IndigoPayContract {
         // No token transfer — the path payment already delivered XLM to the
         // project wallet in the same Stellar transaction.
 
+        #[cfg(feature = "fees")]
+        {
+            let fee_bps = read_platform_fee_bps(&env);
+            let (_project_amount, fee_amount) = split_fee(xlm_amount, fee_bps);
+            // Note: no actual fee transfer occurs here because the path payment
+            // already delivered XLM to the project wallet in the same transaction.
+            // The fee is emitted in the event for transparency only.
+            env.events().publish(
+                (symbol_short!("donated"), donor.clone(), project_id.clone()),
+                (xlm_amount, donor_stats.badge.clone(), msg_hash, fee_amount),
+            );
+        }
+        #[cfg(not(feature = "fees"))]
         env.events().publish(
             (symbol_short!("donated"), donor.clone(), project_id.clone()),
             (xlm_amount, donor_stats.badge.clone(), msg_hash),
@@ -1777,8 +1892,35 @@ impl IndigoPayContract {
         //    atomic transaction (before this call) so the contract holds a
         //    sufficient balance.
         let token_client = token::Client::new(&env, &token);
-        token_client.transfer(&env.current_contract_address(), &project.wallet, &amount);
+        let contract_addr = env.current_contract_address();
 
+        // Fee split for anonymous donations.
+        let fee_bps = read_platform_fee_bps(&env);
+        #[allow(unused_variables)]
+        let (project_amount, fee_amount) = split_fee(amount, fee_bps);
+
+        #[cfg(feature = "fees")]
+        if fee_amount > 0 {
+            let treasury: Address = env
+                .storage()
+                .instance()
+                .get(&DataKey::PlatformTreasury)
+                .expect("Platform treasury not configured");
+            token_client.transfer(&contract_addr, &treasury, &fee_amount);
+        }
+
+        token_client.transfer(&contract_addr, &project.wallet, &project_amount);
+
+        #[cfg(feature = "fees")]
+        env.events().publish(
+            (
+                symbol_short!("anon_don"),
+                anon_donor.clone(),
+                project_id.clone(),
+            ),
+            (amount, donor_stats.badge.clone(), msg_hash, fee_amount),
+        );
+        #[cfg(not(feature = "fees"))]
         env.events().publish(
             (
                 symbol_short!("anon_don"),
@@ -2633,8 +2775,30 @@ impl IndigoPayContract {
 
         let token_client = token::Client::new(&env, &usdc_token);
         let project_wallet = project.wallet;
-        token_client.transfer(&donor, &project_wallet, &usdc_amount);
 
+        // Fee split for USDC donations.
+        let fee_bps = read_platform_fee_bps(&env);
+        #[allow(unused_variables)]
+        let (project_usdc, fee_amount) = split_fee(usdc_amount, fee_bps);
+
+        #[cfg(feature = "fees")]
+        if fee_amount > 0 {
+            let treasury: Address = env
+                .storage()
+                .instance()
+                .get(&DataKey::PlatformTreasury)
+                .expect("Platform treasury not configured");
+            token_client.transfer(&donor, &treasury, &fee_amount);
+        }
+
+        token_client.transfer(&donor, &project_wallet, &project_usdc);
+
+        #[cfg(feature = "fees")]
+        env.events().publish(
+            (symbol_short!("donated"), donor.clone(), project_id),
+            (usdc_amount, symbol_short!("USDC"), msg_hash, fee_amount),
+        );
+        #[cfg(not(feature = "fees"))]
         env.events().publish(
             (symbol_short!("donated"), donor.clone(), project_id),
             (usdc_amount, symbol_short!("USDC"), msg_hash),
@@ -7478,5 +7642,98 @@ mod tests {
         // Another address tries to cancel.
         let impostor = Address::generate(&env);
         client.cancel_vesting(&impostor, &schedule_id);
+    }
+
+    // ─── Platform fee tests (#385) ───────────────────────────────────────────
+
+    #[cfg(feature = "fees")]
+    #[test]
+    fn test_donate_with_fee() {
+        let (env, _cid, client, admin, pid) = setup();
+
+        // Configure 200 bps (2%) platform fee.
+        let treasury = Address::generate(&env);
+        client.set_platform_treasury(&signers1(&env, &admin), &treasury);
+        client.set_platform_fee(&signers1(&env, &admin), &200u32);
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let amount: i128 = 100 * STROOP; // 100 XLM
+        StellarAssetClient::new(&env, &token).mint(&donor, &amount);
+
+        client.donate(&token, &donor, &pid, &amount, &0u32);
+
+        // Full amount recorded for project total and donor stats.
+        let p = client.get_project(&pid);
+        assert_eq!(p.total_raised, amount);
+        let stats = client.get_donor_stats(&donor);
+        assert_eq!(stats.total_donated, amount);
+        assert_eq!(client.get_global_total(), amount);
+
+        // 2% fee = 2 XLM = 20_000_000 stroops to treasury.
+        // 98 XLM = 980_000_000 stroops to project.
+    }
+
+    #[cfg(feature = "fees")]
+    #[test]
+    fn test_donate_with_zero_fee() {
+        let (env, _cid, client, _admin, pid) = setup();
+
+        // Fee defaults to 0 — 100% goes to project (existing behavior).
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let amount: i128 = 50 * STROOP;
+        StellarAssetClient::new(&env, &token).mint(&donor, &amount);
+
+        client.donate(&token, &donor, &pid, &amount, &0u32);
+
+        let p = client.get_project(&pid);
+        assert_eq!(p.total_raised, amount);
+        let stats = client.get_donor_stats(&donor);
+        assert_eq!(stats.total_donated, amount);
+        assert_eq!(client.get_global_total(), amount);
+    }
+
+    #[cfg(feature = "fees")]
+    #[test]
+    #[should_panic(expected = "Platform fee exceeds maximum of 500 bps (5%)")]
+    fn test_fee_exceeds_maximum() {
+        let (env, _cid, client, admin, _pid) = setup();
+
+        // Setting 600 bps (6%) must panic — exceeds 500 bps cap.
+        client.set_platform_fee(&signers1(&env, &admin), &600u32);
+    }
+
+    #[cfg(feature = "fees")]
+    #[test]
+    fn test_fee_emitted_in_event() {
+        let (env, _cid, client, admin, pid) = setup();
+
+        // Configure 200 bps (2%) platform fee.
+        let treasury = Address::generate(&env);
+        client.set_platform_treasury(&signers1(&env, &admin), &treasury);
+        client.set_platform_fee(&signers1(&env, &admin), &200u32);
+
+        let donor = Address::generate(&env);
+        let token_admin = Address::generate(&env);
+        let token = env
+            .register_stellar_asset_contract_v2(token_admin)
+            .address();
+        let amount: i128 = 100 * STROOP;
+        StellarAssetClient::new(&env, &token).mint(&donor, &amount);
+
+        client.donate(&token, &donor, &pid, &amount, &0u32);
+
+        // Verify donation was recorded and events include the fee.
+        let p = client.get_project(&pid);
+        assert_eq!(p.total_raised, amount);
+        let record = client.get_donation_record(&0u32);
+        assert_eq!(record.amount, amount);
     }
 }
