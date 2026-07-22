@@ -15,7 +15,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.stellarindigopay.app",
-      "associatedDomains": ["applinks:indigopay.example.com"]
+      "associatedDomains": [
+        "applinks:indigopay.example.com",
+        "webcredentials:indigopay.example.com"
+      ],
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["indigopay", "web+stellar"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,6 +39,11 @@
           "autoVerify": true,
           "data": [
             { "scheme": "indigopay" },
+            {
+              "scheme": "web+stellar",
+              "host": "pay",
+              "pathPrefix": "/"
+            },
             {
               "scheme": "https",
               "host": "indigopay.example.com",
@@ -53,6 +68,9 @@
         }
       ]
     ],
+    "scheme": "indigopay"
+  },
+  "extra": {
     "scheme": "indigopay"
   }
 }
